@@ -39,7 +39,7 @@ class CourseExplorerApp extends StatelessWidget {
 }
 
 // =======================================================
-// ANCESTOR PEMILIK SINGLE SOURCE OF TRUTH (TAHAP 3)
+// ARSITEKTUR UTAMA
 // =======================================================
 class ResponsiveShell extends StatefulWidget {
   const ResponsiveShell({super.key});
@@ -49,8 +49,6 @@ class ResponsiveShell extends StatefulWidget {
 
 class _ResponsiveShellState extends State<ResponsiveShell> {
   int _currentIndex = 0;
-
-  // TAHAP 3: Single Source of Truth untuk Favorites ditempatkan di ancestor terdekat
   final Set<String> _favorites = {'PTI-01', 'PTI-02'};
 
   void _handleFavoriteChanged(String code) {
@@ -146,7 +144,7 @@ class StudentHeader extends StatelessWidget {
 }
 
 // =======================================================
-// WIDGET RINGKASAN (MEMBACA SINGLE SOURCE OF TRUTH)
+// WIDGET RINGKASAN
 // =======================================================
 class CourseSummaryBanner extends StatelessWidget {
   final int totalCourses;
@@ -192,8 +190,105 @@ class CourseSummaryBanner extends StatelessWidget {
 }
 
 // =======================================================
-// REUSABLE WIDGET 2: COURSE CARD (TAHAP 3: STATELESS / SINGLE SOURCE)
-// Tidak menyimpan salinan isFavorite sendiri, murni dari parent
+// HALAMAN 1: HOME (TAHAP 4: IMPLEMENTASI VALUENOTIFIER)
+// =======================================================
+class HomePage extends StatefulWidget {
+  final int totalCourses;
+  final Set<String> favorites;
+
+  const HomePage({
+    super.key,
+    required this.totalCourses,
+    required this.favorites,
+  });
+
+  @override
+  State<HomePage> createState() => _HomePageState();
+}
+
+class _HomePageState extends State<HomePage> {
+  // TAHAP 4: Membuat ValueNotifier untuk state sederhana (counter interaktif)
+  final ValueNotifier<int> _interactionCounter = ValueNotifier<int>(0);
+
+  @override
+  void dispose() {
+    _interactionCounter.dispose(); // Wajib dibersihkan untuk mencegah memory leak
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Course Explorer - Tahap 4')),
+      body: Column(
+        children: [
+          const StudentHeader(),
+          CourseSummaryBanner(
+            totalCourses: widget.totalCourses,
+            favoriteCount: widget.favorites.length,
+          ),
+          Expanded(
+            child: Center(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.notifications_active_outlined, size: 64, color: Colors.lightBlue[400]),
+                    const SizedBox(height: 12),
+                    const Text(
+                      'Tahap 4: ValueNotifier &\nValueListenableBuilder',
+                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 24),
+                    
+                    // KOTAK DEMO VALUENOTIFIER
+                    Card(
+                      elevation: 2,
+                      color: Colors.yellow[50],
+                      child: Padding(
+                        padding: const EdgeInsets.all(16.0),
+                        child: Column(
+                          children: [
+                            const Text('Eksperimen ValueNotifier', style: TextStyle(fontWeight: FontWeight.bold)),
+                            const SizedBox(height: 12),
+                            // TAHAP 4: Menampilkan nilai dengan ValueListenableBuilder
+                            ValueListenableBuilder<int>(
+                              valueListenable: _interactionCounter,
+                              builder: (context, value, child) {
+                                return Text(
+                                  'Tombol ditekan: $value kali',
+                                  style: const TextStyle(fontSize: 20, color: Colors.deepOrange),
+                                );
+                              },
+                            ),
+                            const SizedBox(height: 12),
+                            // TAHAP 4: Button yang mengubah value
+                            ElevatedButton.icon(
+                              onPressed: () {
+                                _interactionCounter.value++; // Memicu update TANPA setState()
+                              },
+                              icon: const Icon(Icons.add),
+                              label: const Text('Tambah Interaksi'),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// =======================================================
+// REUSABLE WIDGET 2: COURSE CARD 
 // =======================================================
 class CourseCard extends StatelessWidget {
   final Map<String, dynamic> course;
@@ -236,42 +331,20 @@ class CourseCard extends StatelessWidget {
                 children: [
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: Colors.lightBlue[50],
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Text(
-                      course['code'],
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        color: Colors.lightBlue[800],
-                        fontSize: 12,
-                      ),
-                    ),
+                    decoration: BoxDecoration(color: Colors.lightBlue[50], borderRadius: BorderRadius.circular(8)),
+                    child: Text(course['code'], style: TextStyle(fontWeight: FontWeight.bold, color: Colors.lightBlue[800], fontSize: 12)),
                   ),
                   IconButton(
                     visualDensity: VisualDensity.compact,
-                    icon: Icon(
-                      isFavorite ? Icons.favorite : Icons.favorite_border,
-                      color: isFavorite ? Colors.red : Colors.grey,
-                    ),
-                    // TAHAP 3: Mengirim aksi kembali melalui callback onFavoriteChanged
+                    icon: Icon(isFavorite ? Icons.favorite : Icons.favorite_border, color: isFavorite ? Colors.red : Colors.grey),
                     onPressed: onFavoriteChanged,
                   ),
                 ],
               ),
               const SizedBox(height: 8),
-              Text(
-                course['title'],
-                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-              ),
+              Text(course['title'], style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold), maxLines: 2, overflow: TextOverflow.ellipsis),
               const SizedBox(height: 4),
-              Text(
-                '${course['credits']} SKS • ${course['status']}',
-                style: const TextStyle(fontSize: 12, color: Colors.black54),
-              ),
+              Text('${course['credits']} SKS • ${course['status']}', style: const TextStyle(fontSize: 12, color: Colors.black54)),
             ],
           ),
         ),
@@ -281,61 +354,7 @@ class CourseCard extends StatelessWidget {
 }
 
 // =======================================================
-// HALAMAN 1: HOME
-// =======================================================
-class HomePage extends StatelessWidget {
-  final int totalCourses;
-  final Set<String> favorites;
-
-  const HomePage({
-    super.key,
-    required this.totalCourses,
-    required this.favorites,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Course Explorer - Tahap 3')),
-      body: Column(
-        children: [
-          const StudentHeader(),
-          CourseSummaryBanner(
-            totalCourses: totalCourses,
-            favoriteCount: favorites.length,
-          ),
-          Expanded(
-            child: Center(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(Icons.sync_alt, size: 64, color: Colors.lightBlue[400]),
-                    const SizedBox(height: 12),
-                    const Text(
-                      'Tahap 3: Lifting State Up &\nSingle Source of Truth',
-                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                      textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: 12),
-                    Text(
-                      'Daftar Favorit Sinkron: ${favorites.isEmpty ? "Belum ada" : favorites.join(", ")}',
-                      style: const TextStyle(fontSize: 14, color: Colors.black87),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// =======================================================
-// HALAMAN 2: COURSES (DUA WIDGET KONSISTEN: BANNER & LIST)
+// HALAMAN 2: COURSES
 // =======================================================
 class CoursesPage extends StatelessWidget {
   final Set<String> favorites;
@@ -350,16 +369,11 @@ class CoursesPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Daftar Course (Tahap 3)')),
+      appBar: AppBar(title: const Text('Daftar Course')),
       body: Column(
         children: [
           const StudentHeader(),
-          // Widget 1: Menampilkan jumlah favorite dari sumber yang sama
-          CourseSummaryBanner(
-            totalCourses: courseData.length,
-            favoriteCount: favorites.length,
-          ),
-          // Widget 2: Menampilkan daftar CourseCard dengan callback ke parent
+          CourseSummaryBanner(totalCourses: courseData.length, favoriteCount: favorites.length),
           Expanded(
             child: Center(
               child: ConstrainedBox(
@@ -371,36 +385,21 @@ class CoursesPage extends StatelessWidget {
                         padding: const EdgeInsets.all(16),
                         itemCount: courseData.length,
                         itemBuilder: (context, index) {
-                          final course = courseData[index];
-                          final code = course['code'] as String;
+                          final code = courseData[index]['code'] as String;
                           return Padding(
                             padding: const EdgeInsets.only(bottom: 12),
-                            child: CourseCard(
-                              course: course,
-                              isFavorite: favorites.contains(code),
-                              onFavoriteChanged: () => onFavoriteChanged(code),
-                            ),
+                            child: CourseCard(course: courseData[index], isFavorite: favorites.contains(code), onFavoriteChanged: () => onFavoriteChanged(code)),
                           );
                         },
                       );
                     }
                     return GridView.builder(
                       padding: const EdgeInsets.all(16),
-                      gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-                        maxCrossAxisExtent: 350,
-                        crossAxisSpacing: 16,
-                        mainAxisSpacing: 16,
-                        childAspectRatio: 1.7,
-                      ),
+                      gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(maxCrossAxisExtent: 350, crossAxisSpacing: 16, mainAxisSpacing: 16, childAspectRatio: 1.7),
                       itemCount: courseData.length,
                       itemBuilder: (context, index) {
-                        final course = courseData[index];
-                        final code = course['code'] as String;
-                        return CourseCard(
-                          course: course,
-                          isFavorite: favorites.contains(code),
-                          onFavoriteChanged: () => onFavoriteChanged(code),
-                        );
+                        final code = courseData[index]['code'] as String;
+                        return CourseCard(course: courseData[index], isFavorite: favorites.contains(code), onFavoriteChanged: () => onFavoriteChanged(code));
                       },
                     );
                   },
