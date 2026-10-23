@@ -14,7 +14,7 @@ final List<Map<String, dynamic>> courseData = [
 ];
 
 // =======================================================
-// CHANGENOTIFIER (STATE MANAGEMENT LOGIC)
+// TAHAP 5: CHANGENOTIFIER (STATE MANAGEMENT LOGIC)
 // =======================================================
 class CourseProvider extends ChangeNotifier {
   final Set<String> _favorites = {};
@@ -27,6 +27,7 @@ class CourseProvider extends ChangeNotifier {
     } else {
       _favorites.add(id);
     }
+    // TAHAP 5: Wajib dipanggil agar UI yang listen ikut rebuild
     notifyListeners();
   }
 }
@@ -68,7 +69,6 @@ class CourseExplorerApp extends StatelessWidget {
 
 // =======================================================
 // ARSITEKTUR UTAMA
-// (Kita masih menyisakan state lokal sementara sebelum refactor penuh di Tahap 7)
 // =======================================================
 class ResponsiveShell extends StatefulWidget {
   const ResponsiveShell({super.key});
@@ -77,27 +77,17 @@ class ResponsiveShell extends StatefulWidget {
 }
 
 class _ResponsiveShellState extends State<ResponsiveShell> {
+  // TAHAP 1: _currentIndex adalah contoh Local State di level shell
   int _currentIndex = 0;
   
-  final Set<String> _favorites = {'PTI-01'};
-
-  void _handleFavoriteChanged(String code) {
-    setState(() {
-      if (_favorites.contains(code)) {
-        _favorites.remove(code);
-      } else {
-        _favorites.add(code);
-      }
-    });
-  }
-
   @override
   Widget build(BuildContext context) {
-    final List<Widget> pages = [
-      HomePage(totalCourses: courseData.length, favorites: _favorites),
-      CoursesPage(favorites: _favorites, onFavoriteChanged: _handleFavoriteChanged),
-      const ProfilePage(),
-      const DebugPage(),
+    // TAHAP 7: Constructor bersih dari Prop Drilling!
+    final List<Widget> pages = const [
+      HomePage(),
+      CoursesPage(),
+      ProfilePage(),
+      DebugPage(),
     ];
 
     return LayoutBuilder(
@@ -168,20 +158,17 @@ class StudentHeader extends StatelessWidget {
 }
 
 // =======================================================
-// WIDGET RINGKASAN
+// WIDGET RINGKASAN (TAHAP 7: CONTEXT.WATCH)
 // =======================================================
 class CourseSummaryBanner extends StatelessWidget {
-  final int totalCourses;
-  final int favoriteCount;
-
-  const CourseSummaryBanner({
-    super.key,
-    required this.totalCourses,
-    required this.favoriteCount,
-  });
+  const CourseSummaryBanner({super.key});
 
   @override
   Widget build(BuildContext context) {
+    // TAHAP 7: Menggunakan watch() untuk merender ulang UI secara otomatis
+    final favoriteCount = context.watch<CourseProvider>().favorites.length;
+    final totalCourses = courseData.length;
+
     return Container(
       margin: const EdgeInsets.fromLTRB(16, 12, 16, 0),
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -214,22 +201,33 @@ class CourseSummaryBanner extends StatelessWidget {
 }
 
 // =======================================================
-// HALAMAN 1: HOME
+// HALAMAN 1: HOME (GABUNGAN TAHAP 4 & TAHAP 7)
 // =======================================================
-class HomePage extends StatelessWidget {
-  final int totalCourses;
-  final Set<String> favorites;
+class HomePage extends StatefulWidget {
+  const HomePage({super.key});
 
-  const HomePage({super.key, required this.totalCourses, required this.favorites});
+  @override
+  State<HomePage> createState() => _HomePageState();
+}
+
+class _HomePageState extends State<HomePage> {
+  // TAHAP 4 DIPERTAHANKAN: ValueNotifier
+  final ValueNotifier<int> _interactionCounter = ValueNotifier<int>(0);
+
+  @override
+  void dispose() {
+    _interactionCounter.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Course Explorer - Tahap 6')),
+      appBar: AppBar(title: const Text('Course Explorer - Terintegrasi')),
       body: Column(
         children: [
           const StudentHeader(),
-          CourseSummaryBanner(totalCourses: totalCourses, favoriteCount: favorites.length),
+          const CourseSummaryBanner(), // Membaca watch()
           Expanded(
             child: Center(
               child: SingleChildScrollView(
@@ -237,12 +235,39 @@ class HomePage extends StatelessWidget {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(Icons.account_tree, size: 64, color: Colors.lightBlue[400]),
+                    Icon(Icons.integration_instructions, size: 64, color: Colors.lightBlue[400]),
                     const SizedBox(height: 12),
-                    const Text(
-                      'Tahap 6: Provider telah dipasang\npada Root Aplikasi (main)',
-                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                      textAlign: TextAlign.center,
+                    
+                    
+                    // TAHAP 4 DIPERTAHANKAN: Kotak Demo ValueNotifier
+                    Card(
+                      elevation: 2,
+                      color: Colors.yellow[50],
+                      child: Padding(
+                        padding: const EdgeInsets.all(16.0),
+                        child: Column(
+                          children: [
+                            
+                            ValueListenableBuilder<int>(
+                              valueListenable: _interactionCounter,
+                              builder: (context, value, child) {
+                                return Text(
+                                  'Tombol ditekan: $value kali',
+                                  style: const TextStyle(fontSize: 20, color: Colors.deepOrange),
+                                );
+                              },
+                            ),
+                            const SizedBox(height: 12),
+                            ElevatedButton.icon(
+                              onPressed: () {
+                                _interactionCounter.value++; 
+                              },
+                              icon: const Icon(Icons.add),
+                              label: const Text('Tambah Interaksi'),
+                            ),
+                          ],
+                        ),
+                      ),
                     ),
                   ],
                 ),
@@ -256,14 +281,20 @@ class HomePage extends StatelessWidget {
 }
 
 // =======================================================
-// REUSABLE WIDGET 2: COURSE CARD 
+// REUSABLE WIDGET 2: COURSE CARD (GABUNGAN TAHAP 1 & TAHAP 7)
 // =======================================================
-class CourseCard extends StatelessWidget {
+class CourseCard extends StatefulWidget {
   final Map<String, dynamic> course;
-  final bool isFavorite;
-  final VoidCallback onFavoriteChanged;
 
-  const CourseCard({super.key, required this.course, required this.isFavorite, required this.onFavoriteChanged});
+  const CourseCard({super.key, required this.course});
+
+  @override
+  State<CourseCard> createState() => _CourseCardState();
+}
+
+class _CourseCardState extends State<CourseCard> {
+  // TAHAP 1 DIPERTAHANKAN: Local state untuk buka/tutup deskripsi
+  bool showPreview = false; 
 
   @override
   Widget build(BuildContext context) {
@@ -273,7 +304,7 @@ class CourseCard extends StatelessWidget {
       child: InkWell(
         borderRadius: BorderRadius.circular(16),
         onTap: () {
-          Navigator.push(context, MaterialPageRoute(builder: (context) => CourseDetailPage(course: course, isFavorite: isFavorite)));
+          Navigator.push(context, MaterialPageRoute(builder: (context) => CourseDetailPage(course: widget.course)));
         },
         child: Padding(
           padding: const EdgeInsets.all(16.0),
@@ -287,19 +318,55 @@ class CourseCard extends StatelessWidget {
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                     decoration: BoxDecoration(color: Colors.lightBlue[50], borderRadius: BorderRadius.circular(8)),
-                    child: Text(course['code'], style: TextStyle(fontWeight: FontWeight.bold, color: Colors.lightBlue[800], fontSize: 12)),
+                    child: Text(widget.course['code'], style: TextStyle(fontWeight: FontWeight.bold, color: Colors.lightBlue[800], fontSize: 12)),
                   ),
-                  IconButton(
-                    visualDensity: VisualDensity.compact,
-                    icon: Icon(isFavorite ? Icons.favorite : Icons.favorite_border, color: isFavorite ? Colors.red : Colors.grey),
-                    onPressed: onFavoriteChanged,
+                  Row(
+                    children: [
+                      // TAHAP 1 DIPERTAHANKAN: Tombol expand/collapse (Local State)
+                      IconButton(
+                        visualDensity: VisualDensity.compact,
+                        icon: Icon(
+                          showPreview ? Icons.expand_less : Icons.expand_more,
+                          color: Colors.grey[700],
+                        ),
+                        onPressed: () {
+                          setState(() {
+                            showPreview = !showPreview;
+                          });
+                        },
+                      ),
+                      // TAHAP 7: Consumer untuk membatasi rebuild pada Icon Favorite saja
+                      Consumer<CourseProvider>(
+                        builder: (context, provider, child) {
+                          final isFavorite = provider.favorites.contains(widget.course['code']);
+                          return IconButton(
+                            visualDensity: VisualDensity.compact,
+                            icon: Icon(
+                              isFavorite ? Icons.favorite : Icons.favorite_border,
+                              color: isFavorite ? Colors.red : Colors.grey,
+                            ),
+                            onPressed: () {
+                              // TAHAP 7: Menggunakan read() untuk action/event
+                              context.read<CourseProvider>().toggleFavorite(widget.course['code']);
+                            },
+                          );
+                        },
+                      ),
+                    ],
                   ),
                 ],
               ),
               const SizedBox(height: 8),
-              Text(course['title'], style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold), maxLines: 2, overflow: TextOverflow.ellipsis),
-              const SizedBox(height: 4),
-              Text('${course['credits']} SKS • ${course['status']}', style: const TextStyle(fontSize: 12, color: Colors.black54)),
+              Text(widget.course['title'], style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold), maxLines: 2, overflow: TextOverflow.ellipsis),
+              
+              // TAHAP 1 DIPERTAHANKAN: Render kondisional preview teks
+              if (showPreview) ...[
+                const SizedBox(height: 6),
+                Text(
+                  '${widget.course['credits']} SKS • Status: ${widget.course['status']}\n${widget.course['desc']}',
+                  style: const TextStyle(fontSize: 12, color: Colors.black54),
+                ),
+              ],
             ],
           ),
         ),
@@ -312,10 +379,7 @@ class CourseCard extends StatelessWidget {
 // HALAMAN 2: COURSES
 // =======================================================
 class CoursesPage extends StatelessWidget {
-  final Set<String> favorites;
-  final ValueChanged<String> onFavoriteChanged;
-
-  const CoursesPage({super.key, required this.favorites, required this.onFavoriteChanged});
+  const CoursesPage({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -324,7 +388,7 @@ class CoursesPage extends StatelessWidget {
       body: Column(
         children: [
           const StudentHeader(),
-          CourseSummaryBanner(totalCourses: courseData.length, favoriteCount: favorites.length),
+          const CourseSummaryBanner(),
           Expanded(
             child: Center(
               child: ConstrainedBox(
@@ -336,10 +400,9 @@ class CoursesPage extends StatelessWidget {
                         padding: const EdgeInsets.all(16),
                         itemCount: courseData.length,
                         itemBuilder: (context, index) {
-                          final code = courseData[index]['code'] as String;
                           return Padding(
                             padding: const EdgeInsets.only(bottom: 12),
-                            child: CourseCard(course: courseData[index], isFavorite: favorites.contains(code), onFavoriteChanged: () => onFavoriteChanged(code)),
+                            child: CourseCard(course: courseData[index]),
                           );
                         },
                       );
@@ -349,8 +412,7 @@ class CoursesPage extends StatelessWidget {
                       gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(maxCrossAxisExtent: 350, crossAxisSpacing: 16, mainAxisSpacing: 16, childAspectRatio: 1.7),
                       itemCount: courseData.length,
                       itemBuilder: (context, index) {
-                        final code = courseData[index]['code'] as String;
-                        return CourseCard(course: courseData[index], isFavorite: favorites.contains(code), onFavoriteChanged: () => onFavoriteChanged(code));
+                        return CourseCard(course: courseData[index]);
                       },
                     );
                   },
@@ -527,16 +589,18 @@ class _DebugPageState extends State<DebugPage> {
 }
 
 // =======================================================
-// HALAMAN DETAIL
+// HALAMAN DETAIL (TAHAP 7: CONTEXT.WATCH)
 // =======================================================
 class CourseDetailPage extends StatelessWidget {
   final Map<String, dynamic> course;
-  final bool isFavorite;
 
-  const CourseDetailPage({super.key, required this.course, required this.isFavorite});
+  const CourseDetailPage({super.key, required this.course});
 
   @override
   Widget build(BuildContext context) {
+    // TAHAP 7: Menggunakan watch() untuk status favorit
+    final isFavorite = context.watch<CourseProvider>().favorites.contains(course['code']);
+
     return Scaffold(
       appBar: AppBar(title: Text(course['code'])),
       body: Center(
