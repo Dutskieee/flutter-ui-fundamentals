@@ -1,6 +1,6 @@
-import 'dart:convert'; // TAHAP 9: Untuk jsonDecode
+import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart'; // TAHAP 9: Untuk rootBundle
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 const String studentName = 'I Made Duta Aryawan';
@@ -37,22 +37,32 @@ class Course {
 
 // =======================================================
 // TAHAP 9: COURSE SERVICE (DATA SOURCE)
-// Bertanggung jawab murni untuk membaca data JSON dari aset
 // =======================================================
 class CourseService {
   Future<List<Course>> loadCourses() async {
-    // Membaca file JSON dari asset
     final jsonString = await rootBundle.loadString('assets/data/student_data.json');
-    // Parsing string ke Map JSON
     final data = jsonDecode(jsonString) as Map<String, dynamic>;
-    // Mengambil list yang ada di key 'courses'
     final list = data['courses'] as List<dynamic>;
-    // Mapping list dynamic menjadi List<Course>
     return list.map((e) => Course.fromJson(e as Map<String, dynamic>)).toList();
   }
 }
 
-// DATA JSON MENTAH SEMENTARA (Akan diganti full dengan Service di Tahap 11)
+// =======================================================
+// TAHAP 10: COURSE REPOSITORY
+// Abstraksi yang menjembatani Provider dan Service
+// =======================================================
+class CourseRepository {
+  final CourseService service;
+  
+  CourseRepository(this.service);
+
+  Future<List<Course>> getCourses() {
+    // Provider hanya memanggil ini, tidak peduli isinya pakai rootBundle atau API internet
+    return service.loadCourses();
+  }
+}
+
+// DATA JSON MENTAH SEMENTARA (Akan diganti full dengan Async Provider di Tahap 11)
 final List<Map<String, dynamic>> rawCourseData = [
   {'code': 'PTI-01', 'title': 'Berpikir Komputasional', 'credits': 3, 'status': 'Active', 'desc': 'Modul ajar CT untuk SMK Fase E.'},
   {'code': 'PTI-02', 'title': 'Mobile UI Flutter', 'credits': 3, 'status': 'Active', 'desc': 'Pengembangan antarmuka responsif.'},
@@ -63,9 +73,14 @@ final List<Map<String, dynamic>> rawCourseData = [
 final List<Course> coursesList = rawCourseData.map((e) => Course.fromJson(e)).toList();
 
 // =======================================================
-// TAHAP 5-7: CHANGENOTIFIER
+// TAHAP 5-10: CHANGENOTIFIER DENGAN REPOSITORY
 // =======================================================
 class CourseProvider extends ChangeNotifier {
+  // Tahap 10: Provider sekarang menerima repository via constructor
+  final CourseRepository repository;
+  
+  CourseProvider(this.repository);
+
   final Set<String> _favorites = {};
 
   Set<String> get favorites => _favorites;
@@ -81,12 +96,16 @@ class CourseProvider extends ChangeNotifier {
 }
 
 // =======================================================
-// MAIN & PROVIDER SETUP
+// MAIN & DEPENDENCY INJECTION (TAHAP 10)
 // =======================================================
 void main() {
+  // Tahap 10: Inisialisasi Service dan Repository sebelum dimasukkan ke Provider
+  final courseService = CourseService();
+  final courseRepository = CourseRepository(courseService);
+
   runApp(
     ChangeNotifierProvider(
-      create: (_) => CourseProvider(),
+      create: (_) => CourseProvider(courseRepository),
       child: const CourseExplorerApp(),
     ),
   );
@@ -256,9 +275,7 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   final ValueNotifier<int> _interactionCounter = ValueNotifier<int>(0);
-  
-  // TAHAP 9: Local state loading khusus untuk tombol uji coba Service
-  bool _isTestingService = false;
+  bool _isTestingRepo = false;
 
   @override
   void dispose() {
@@ -269,7 +286,7 @@ class _HomePageState extends State<HomePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Course Explorer - Tahap 9')),
+      appBar: AppBar(title: const Text('Course Explorer - Tahap 10')),
       body: Column(
         children: [
           const StudentHeader(),
@@ -281,55 +298,51 @@ class _HomePageState extends State<HomePage> {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(Icons.storage, size: 64, color: Colors.lightBlue[400]),
+                    Icon(Icons.layers, size: 64, color: Colors.lightBlue[400]),
                     const SizedBox(height: 12),
                     const Text(
-                      'Tahap 9: CourseService\n(Membaca student_data.json)',
+                      'Tahap 10: Repository Pattern\n(Abstraksi Layer Data)',
                       style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                       textAlign: TextAlign.center,
                     ),
                     const SizedBox(height: 24),
                     
-                    // TAHAP 9: Tombol untuk menguji CourseService
+                    // TAHAP 10: Tombol untuk menguji CourseRepository melalui Provider
                     ElevatedButton.icon(
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.green[600],
+                        backgroundColor: Colors.teal[600],
                         foregroundColor: Colors.white,
                         padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
                       ),
-                      onPressed: _isTestingService ? null : () async {
-                        setState(() => _isTestingService = true);
+                      onPressed: _isTestingRepo ? null : () async {
+                        setState(() => _isTestingRepo = true);
                         try {
-                          // Memanggil service secara langsung untuk uji coba
-                          final service = CourseService();
-                          final data = await service.loadCourses();
+                          // Membaca repository yang sudah diinjeksi ke Provider
+                          final repo = context.read<CourseProvider>().repository;
+                          final data = await repo.getCourses();
                           
                           if (mounted) {
                             ScaffoldMessenger.of(context).showSnackBar(
                               SnackBar(
-                                content: Text('SUKSES! Berhasil membaca ${data.length} course dari JSON asli.'),
-                                backgroundColor: Colors.green,
+                                content: Text('SUKSES! Repository membaca ${data.length} course dengan aman.'),
+                                backgroundColor: Colors.teal,
                               ),
                             );
                           }
                         } catch (e) {
                           if (mounted) {
                             ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text('ERROR: $e\n(Pastikan assets di pubspec.yaml sudah benar!)'),
-                                backgroundColor: Colors.red,
-                                duration: const Duration(seconds: 4),
-                              ),
+                              SnackBar(content: Text('ERROR: $e'), backgroundColor: Colors.red),
                             );
                           }
                         } finally {
-                          if (mounted) setState(() => _isTestingService = false);
+                          if (mounted) setState(() => _isTestingRepo = false);
                         }
                       },
-                      icon: _isTestingService 
+                      icon: _isTestingRepo 
                           ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                          : const Icon(Icons.file_download),
-                      label: Text(_isTestingService ? 'Loading JSON...' : 'Uji Coba loadCourses()'),
+                          : const Icon(Icons.mediation),
+                      label: Text(_isTestingRepo ? 'Loading Repo...' : 'Uji Coba getCourses()'),
                     ),
                     const SizedBox(height: 24),
 
