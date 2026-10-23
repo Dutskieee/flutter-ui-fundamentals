@@ -1,18 +1,20 @@
+import 'dart:convert'; // TAHAP 9: Untuk jsonDecode
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart'; // TAHAP 9: Untuk rootBundle
 import 'package:provider/provider.dart';
 
 const String studentName = 'I Made Duta Aryawan';
 const String studentId = '2415051044';
 
 // =======================================================
-// TAHAP 8: MEMBUAT MODEL COURSE
+// TAHAP 8: MODEL COURSE
 // =======================================================
 class Course {
   final String code;
   final String title;
   final int credits;
   final String status;
-  final String desc; // Dipertahankan untuk fitur deskripsi Tahap 1
+  final String desc;
 
   Course({
     required this.code,
@@ -22,19 +24,35 @@ class Course {
     required this.desc,
   });
 
-  // Factory untuk mem-parsing data JSON (Map) menjadi Object Course
   factory Course.fromJson(Map<String, dynamic> json) {
     return Course(
       code: json['code'] as String,
       title: json['title'] as String,
       credits: json['credits'] as int,
       status: json['status'] as String,
-      desc: json['desc'] as String? ?? 'Tidak ada deskripsi', // Default value jika desc null
+      desc: json['desc'] as String? ?? 'Tidak ada deskripsi',
     );
   }
 }
 
-// DATA JSON MENTAH (Simulasi data yang belum di-parsing)
+// =======================================================
+// TAHAP 9: COURSE SERVICE (DATA SOURCE)
+// Bertanggung jawab murni untuk membaca data JSON dari aset
+// =======================================================
+class CourseService {
+  Future<List<Course>> loadCourses() async {
+    // Membaca file JSON dari asset
+    final jsonString = await rootBundle.loadString('assets/data/student_data.json');
+    // Parsing string ke Map JSON
+    final data = jsonDecode(jsonString) as Map<String, dynamic>;
+    // Mengambil list yang ada di key 'courses'
+    final list = data['courses'] as List<dynamic>;
+    // Mapping list dynamic menjadi List<Course>
+    return list.map((e) => Course.fromJson(e as Map<String, dynamic>)).toList();
+  }
+}
+
+// DATA JSON MENTAH SEMENTARA (Akan diganti full dengan Service di Tahap 11)
 final List<Map<String, dynamic>> rawCourseData = [
   {'code': 'PTI-01', 'title': 'Berpikir Komputasional', 'credits': 3, 'status': 'Active', 'desc': 'Modul ajar CT untuk SMK Fase E.'},
   {'code': 'PTI-02', 'title': 'Mobile UI Flutter', 'credits': 3, 'status': 'Active', 'desc': 'Pengembangan antarmuka responsif.'},
@@ -42,13 +60,10 @@ final List<Map<String, dynamic>> rawCourseData = [
   {'code': 'PTI-04', 'title': 'Metodologi Penelitian', 'credits': 2, 'status': 'Completed', 'desc': 'Penyusunan proposal riset EdTech.'},
   {'code': 'PTI-05', 'title': 'Desain Instruksional', 'credits': 3, 'status': 'Active', 'desc': 'Penerapan Kurikulum Merdeka.'},
 ];
-
-// TAHAP 8: Mengubah List<Map> menjadi List<Course> menggunakan fromJson
 final List<Course> coursesList = rawCourseData.map((e) => Course.fromJson(e)).toList();
 
-
 // =======================================================
-// TAHAP 5-7: CHANGENOTIFIER (STATE MANAGEMENT LOGIC)
+// TAHAP 5-7: CHANGENOTIFIER
 // =======================================================
 class CourseProvider extends ChangeNotifier {
   final Set<String> _favorites = {};
@@ -66,7 +81,7 @@ class CourseProvider extends ChangeNotifier {
 }
 
 // =======================================================
-// MAIN & PROVIDER SETUP (TAHAP 6)
+// MAIN & PROVIDER SETUP
 // =======================================================
 void main() {
   runApp(
@@ -109,7 +124,7 @@ class ResponsiveShell extends StatefulWidget {
 }
 
 class _ResponsiveShellState extends State<ResponsiveShell> {
-  int _currentIndex = 0; // Tahap 1: Local state
+  int _currentIndex = 0;
 
   @override
   Widget build(BuildContext context) {
@@ -196,7 +211,7 @@ class CourseSummaryBanner extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final favoriteCount = context.watch<CourseProvider>().favorites.length;
-    final totalCourses = coursesList.length; // Menggunakan data model baru
+    final totalCourses = coursesList.length; 
 
     return Container(
       margin: const EdgeInsets.fromLTRB(16, 12, 16, 0),
@@ -230,7 +245,7 @@ class CourseSummaryBanner extends StatelessWidget {
 }
 
 // =======================================================
-// HALAMAN 1: HOME (GABUNGAN TAHAP 4 & TAHAP 7)
+// HALAMAN 1: HOME
 // =======================================================
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -241,6 +256,9 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   final ValueNotifier<int> _interactionCounter = ValueNotifier<int>(0);
+  
+  // TAHAP 9: Local state loading khusus untuk tombol uji coba Service
+  bool _isTestingService = false;
 
   @override
   void dispose() {
@@ -251,7 +269,7 @@ class _HomePageState extends State<HomePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Course Explorer - Tahap 8')),
+      appBar: AppBar(title: const Text('Course Explorer - Tahap 9')),
       body: Column(
         children: [
           const StudentHeader(),
@@ -263,18 +281,59 @@ class _HomePageState extends State<HomePage> {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(Icons.data_object, size: 64, color: Colors.lightBlue[400]),
+                    Icon(Icons.storage, size: 64, color: Colors.lightBlue[400]),
                     const SizedBox(height: 12),
                     const Text(
-                      'Tahap 8: Model Course & fromJson',
+                      'Tahap 9: CourseService\n(Membaca student_data.json)',
                       style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                       textAlign: TextAlign.center,
                     ),
-                    const SizedBox(height: 8),
-                    const Text('Data kini menggunakan Object Type-Safe!'),
                     const SizedBox(height: 24),
                     
-                    // Kotak Demo ValueNotifier (Tahap 4)
+                    // TAHAP 9: Tombol untuk menguji CourseService
+                    ElevatedButton.icon(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.green[600],
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                      ),
+                      onPressed: _isTestingService ? null : () async {
+                        setState(() => _isTestingService = true);
+                        try {
+                          // Memanggil service secara langsung untuk uji coba
+                          final service = CourseService();
+                          final data = await service.loadCourses();
+                          
+                          if (mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text('SUKSES! Berhasil membaca ${data.length} course dari JSON asli.'),
+                                backgroundColor: Colors.green,
+                              ),
+                            );
+                          }
+                        } catch (e) {
+                          if (mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text('ERROR: $e\n(Pastikan assets di pubspec.yaml sudah benar!)'),
+                                backgroundColor: Colors.red,
+                                duration: const Duration(seconds: 4),
+                              ),
+                            );
+                          }
+                        } finally {
+                          if (mounted) setState(() => _isTestingService = false);
+                        }
+                      },
+                      icon: _isTestingService 
+                          ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                          : const Icon(Icons.file_download),
+                      label: Text(_isTestingService ? 'Loading JSON...' : 'Uji Coba loadCourses()'),
+                    ),
+                    const SizedBox(height: 24),
+
+                    // Kotak Demo ValueNotifier
                     Card(
                       elevation: 2,
                       color: Colors.yellow[50],
@@ -318,10 +377,9 @@ class _HomePageState extends State<HomePage> {
 
 // =======================================================
 // REUSABLE WIDGET 2: COURSE CARD 
-// TAHAP 8: Sekarang menerima tipe data `Course` bukan Map!
 // =======================================================
 class CourseCard extends StatefulWidget {
-  final Course course; // <-- Perubahan Tahap 8
+  final Course course;
 
   const CourseCard({super.key, required this.course});
 
@@ -330,7 +388,7 @@ class CourseCard extends StatefulWidget {
 }
 
 class _CourseCardState extends State<CourseCard> {
-  bool showPreview = false; // Tahap 1 dipertahankan
+  bool showPreview = false;
 
   @override
   Widget build(BuildContext context) {
@@ -354,37 +412,22 @@ class _CourseCardState extends State<CourseCard> {
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                     decoration: BoxDecoration(color: Colors.lightBlue[50], borderRadius: BorderRadius.circular(8)),
-                    // TAHAP 8: Mengakses data menggunakan properties dari object (course.code)
                     child: Text(widget.course.code, style: TextStyle(fontWeight: FontWeight.bold, color: Colors.lightBlue[800], fontSize: 12)),
                   ),
                   Row(
                     children: [
-                      // Tahap 1: Local State Expand/Collapse
                       IconButton(
                         visualDensity: VisualDensity.compact,
-                        icon: Icon(
-                          showPreview ? Icons.expand_less : Icons.expand_more,
-                          color: Colors.grey[700],
-                        ),
-                        onPressed: () {
-                          setState(() {
-                            showPreview = !showPreview;
-                          });
-                        },
+                        icon: Icon(showPreview ? Icons.expand_less : Icons.expand_more, color: Colors.grey[700]),
+                        onPressed: () => setState(() => showPreview = !showPreview),
                       ),
-                      // Tahap 7: Consumer & read()
                       Consumer<CourseProvider>(
                         builder: (context, provider, child) {
                           final isFavorite = provider.favorites.contains(widget.course.code);
                           return IconButton(
                             visualDensity: VisualDensity.compact,
-                            icon: Icon(
-                              isFavorite ? Icons.favorite : Icons.favorite_border,
-                              color: isFavorite ? Colors.red : Colors.grey,
-                            ),
-                            onPressed: () {
-                              context.read<CourseProvider>().toggleFavorite(widget.course.code);
-                            },
+                            icon: Icon(isFavorite ? Icons.favorite : Icons.favorite_border, color: isFavorite ? Colors.red : Colors.grey),
+                            onPressed: () => context.read<CourseProvider>().toggleFavorite(widget.course.code),
                           );
                         },
                       ),
@@ -393,16 +436,11 @@ class _CourseCardState extends State<CourseCard> {
                 ],
               ),
               const SizedBox(height: 8),
-              // Menggunakan course.title
               Text(widget.course.title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold), maxLines: 2, overflow: TextOverflow.ellipsis),
               
               if (showPreview) ...[
                 const SizedBox(height: 6),
-                // Menggunakan course.credits, course.status, course.desc
-                Text(
-                  '${widget.course.credits} SKS • Status: ${widget.course.status}\n${widget.course.desc}',
-                  style: const TextStyle(fontSize: 12, color: Colors.black54),
-                ),
+                Text('${widget.course.credits} SKS • Status: ${widget.course.status}\n${widget.course.desc}', style: const TextStyle(fontSize: 12, color: Colors.black54)),
               ],
             ],
           ),
@@ -435,13 +473,9 @@ class CoursesPage extends StatelessWidget {
                     if (constraints.maxWidth < 600) {
                       return ListView.builder(
                         padding: const EdgeInsets.all(16),
-                        // TAHAP 8: Menggunakan coursesList
                         itemCount: coursesList.length,
                         itemBuilder: (context, index) {
-                          return Padding(
-                            padding: const EdgeInsets.only(bottom: 12),
-                            child: CourseCard(course: coursesList[index]),
-                          );
+                          return Padding(padding: const EdgeInsets.only(bottom: 12), child: CourseCard(course: coursesList[index]));
                         },
                       );
                     }
@@ -628,7 +662,6 @@ class _DebugPageState extends State<DebugPage> {
 
 // =======================================================
 // HALAMAN DETAIL
-// TAHAP 8: Menerima tipe data Course
 // =======================================================
 class CourseDetailPage extends StatelessWidget {
   final Course course;
@@ -637,7 +670,6 @@ class CourseDetailPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // TAHAP 8: Akses field class object
     final isFavorite = context.watch<CourseProvider>().favorites.contains(course.code);
 
     return Scaffold(
