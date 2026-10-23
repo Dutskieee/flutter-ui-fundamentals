@@ -12,6 +12,26 @@ final List<Map<String, dynamic>> courseData = [
   {'code': 'PTI-05', 'title': 'Desain Instruksional', 'credits': 3, 'status': 'Active', 'desc': 'Penerapan Kurikulum Merdeka.'},
 ];
 
+// =======================================================
+// TAHAP 5: MEMBUAT CHANGENOTIFIER (STATE MANAGEMENT LOGIC)
+// =======================================================
+class CourseProvider extends ChangeNotifier {
+  final Set<String> _favorites = {};
+
+  // Getter agar favorites tidak bisa dimodifikasi langsung dari luar
+  Set<String> get favorites => _favorites;
+
+  void toggleFavorite(String id) {
+    if (_favorites.contains(id)) {
+      _favorites.remove(id);
+    } else {
+      _favorites.add(id);
+    }
+    // Wajib dipanggil untuk memberitahu widget listener agar rebuild
+    notifyListeners();
+  }
+}
+
 void main() {
   runApp(const CourseExplorerApp());
 }
@@ -40,6 +60,7 @@ class CourseExplorerApp extends StatelessWidget {
 
 // =======================================================
 // ARSITEKTUR UTAMA
+// (Di tahap 6 nanti, state ini akan digantikan oleh Provider)
 // =======================================================
 class ResponsiveShell extends StatefulWidget {
   const ResponsiveShell({super.key});
@@ -49,6 +70,8 @@ class ResponsiveShell extends StatefulWidget {
 
 class _ResponsiveShellState extends State<ResponsiveShell> {
   int _currentIndex = 0;
+  
+  // Masih menggunakan state lama sebelum dipasang Provider di Tahap 6
   final Set<String> _favorites = {'PTI-01', 'PTI-02'};
 
   void _handleFavoriteChanged(String code) {
@@ -190,7 +213,7 @@ class CourseSummaryBanner extends StatelessWidget {
 }
 
 // =======================================================
-// HALAMAN 1: HOME (TAHAP 4: IMPLEMENTASI VALUENOTIFIER)
+// HALAMAN 1: HOME
 // =======================================================
 class HomePage extends StatefulWidget {
   final int totalCourses;
@@ -207,19 +230,18 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
-  // TAHAP 4: Membuat ValueNotifier untuk state sederhana (counter interaktif)
   final ValueNotifier<int> _interactionCounter = ValueNotifier<int>(0);
 
   @override
   void dispose() {
-    _interactionCounter.dispose(); // Wajib dibersihkan untuk mencegah memory leak
+    _interactionCounter.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Course Explorer - Tahap 4')),
+      appBar: AppBar(title: const Text('Course Explorer - Tahap 5')),
       body: Column(
         children: [
           const StudentHeader(),
@@ -234,48 +256,14 @@ class _HomePageState extends State<HomePage> {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(Icons.notifications_active_outlined, size: 64, color: Colors.lightBlue[400]),
+                    Icon(Icons.code, size: 64, color: Colors.lightBlue[400]),
                     const SizedBox(height: 12),
                     const Text(
-                      'Tahap 4: ValueNotifier &\nValueListenableBuilder',
+                      'Tahap 5: ChangeNotifier telah dibuat di kode',
                       style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                       textAlign: TextAlign.center,
                     ),
                     const SizedBox(height: 24),
-                    
-                    // KOTAK DEMO VALUENOTIFIER
-                    Card(
-                      elevation: 2,
-                      color: Colors.yellow[50],
-                      child: Padding(
-                        padding: const EdgeInsets.all(16.0),
-                        child: Column(
-                          children: [
-                            const Text('Eksperimen ValueNotifier', style: TextStyle(fontWeight: FontWeight.bold)),
-                            const SizedBox(height: 12),
-                            // TAHAP 4: Menampilkan nilai dengan ValueListenableBuilder
-                            ValueListenableBuilder<int>(
-                              valueListenable: _interactionCounter,
-                              builder: (context, value, child) {
-                                return Text(
-                                  'Tombol ditekan: $value kali',
-                                  style: const TextStyle(fontSize: 20, color: Colors.deepOrange),
-                                );
-                              },
-                            ),
-                            const SizedBox(height: 12),
-                            // TAHAP 4: Button yang mengubah value
-                            ElevatedButton.icon(
-                              onPressed: () {
-                                _interactionCounter.value++; // Memicu update TANPA setState()
-                              },
-                              icon: const Icon(Icons.add),
-                              label: const Text('Tambah Interaksi'),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
                   ],
                 ),
               ),
