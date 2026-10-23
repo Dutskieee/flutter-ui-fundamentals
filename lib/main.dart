@@ -39,7 +39,7 @@ class CourseExplorerApp extends StatelessWidget {
 }
 
 // =======================================================
-// ARSITEKTUR UTAMA (PARENT PEMILIK STATE DI TAHAP 2)
+// ANCESTOR PEMILIK SINGLE SOURCE OF TRUTH (TAHAP 3)
 // =======================================================
 class ResponsiveShell extends StatefulWidget {
   const ResponsiveShell({super.key});
@@ -50,11 +50,10 @@ class ResponsiveShell extends StatefulWidget {
 class _ResponsiveShellState extends State<ResponsiveShell> {
   int _currentIndex = 0;
 
-  // TAHAP 2: Satu nilai favorites pada parent (ResponsiveShell)
-  final Set<String> _favorites = {'PTI-01'};
+  // TAHAP 3: Single Source of Truth untuk Favorites ditempatkan di ancestor terdekat
+  final Set<String> _favorites = {'PTI-01', 'PTI-02'};
 
-  // Callback pada parent untuk mengubah favorites
-  void _toggleFavorite(String code) {
+  void _handleFavoriteChanged(String code) {
     setState(() {
       if (_favorites.contains(code)) {
         _favorites.remove(code);
@@ -66,15 +65,14 @@ class _ResponsiveShellState extends State<ResponsiveShell> {
 
   @override
   Widget build(BuildContext context) {
-    // TAHAP 2: Meneruskan nilai favorites & callback ke child melalui constructor (Prop Drilling)
     final List<Widget> pages = [
       HomePage(
+        totalCourses: courseData.length,
         favorites: _favorites,
-        onToggleFavorite: _toggleFavorite,
       ),
       CoursesPage(
         favorites: _favorites,
-        onToggleFavorite: _toggleFavorite,
+        onFavoriteChanged: _handleFavoriteChanged,
       ),
       const ProfilePage(),
       const DebugPage(),
@@ -148,85 +146,66 @@ class StudentHeader extends StatelessWidget {
 }
 
 // =======================================================
-// WIDGET PERANTARA (MENUNJUKKAN PROP DRILLING DI TAHAP 2)
-// Widget ini sebenarnya tidak butuh favorites, tapi terpaksa
-// menerimanya di constructor hanya untuk diteruskan ke CourseCard!
+// WIDGET RINGKASAN (MEMBACA SINGLE SOURCE OF TRUTH)
 // =======================================================
-class CourseListSection extends StatelessWidget {
-  final Set<String> favorites;
-  final ValueChanged<String> onToggleFavorite;
+class CourseSummaryBanner extends StatelessWidget {
+  final int totalCourses;
+  final int favoriteCount;
 
-  const CourseListSection({
+  const CourseSummaryBanner({
     super.key,
-    required this.favorites,
-    required this.onToggleFavorite,
+    required this.totalCourses,
+    required this.favoriteCount,
   });
 
   @override
   Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        if (constraints.maxWidth < 600) {
-          return ListView.builder(
-            padding: const EdgeInsets.all(16),
-            itemCount: courseData.length,
-            itemBuilder: (context, index) {
-              final course = courseData[index];
-              return Padding(
-                padding: const EdgeInsets.only(bottom: 12),
-                child: CourseCard(
-                  course: course,
-                  isFavorite: favorites.contains(course['code']),
-                  onToggleFavorite: () => onToggleFavorite(course['code']),
-                ),
-              );
-            },
-          );
-        }
-        return GridView.builder(
-          padding: const EdgeInsets.all(16),
-          gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-            maxCrossAxisExtent: 350,
-            crossAxisSpacing: 16,
-            mainAxisSpacing: 16,
-            childAspectRatio: 1.7,
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: Colors.lightBlue[50],
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.lightBlue.shade200),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceAround,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.menu_book, color: Colors.lightBlue[800], size: 20),
+              const SizedBox(width: 8),
+              Text('Courses: $totalCourses', style: const TextStyle(fontWeight: FontWeight.bold)),
+            ],
           ),
-          itemCount: courseData.length,
-          itemBuilder: (context, index) {
-            final course = courseData[index];
-            return CourseCard(
-              course: course,
-              isFavorite: favorites.contains(course['code']),
-              onToggleFavorite: () => onToggleFavorite(course['code']),
-            );
-          },
-        );
-      },
+          Row(
+            children: [
+              const Icon(Icons.favorite, color: Colors.red, size: 20),
+              const SizedBox(width: 8),
+              Text('Favorites: $favoriteCount', style: const TextStyle(fontWeight: FontWeight.bold)),
+            ],
+          ),
+        ],
+      ),
     );
   }
 }
 
 // =======================================================
-// REUSABLE WIDGET 2: COURSE CARD (CHILD LEVE TERBAWAH)
+// REUSABLE WIDGET 2: COURSE CARD (TAHAP 3: STATELESS / SINGLE SOURCE)
+// Tidak menyimpan salinan isFavorite sendiri, murni dari parent
 // =======================================================
-class CourseCard extends StatefulWidget {
+class CourseCard extends StatelessWidget {
   final Map<String, dynamic> course;
   final bool isFavorite;
-  final VoidCallback onToggleFavorite;
+  final VoidCallback onFavoriteChanged;
 
   const CourseCard({
     super.key,
     required this.course,
     required this.isFavorite,
-    required this.onToggleFavorite,
+    required this.onFavoriteChanged,
   });
-
-  @override
-  State<CourseCard> createState() => _CourseCardState();
-}
-
-class _CourseCardState extends State<CourseCard> {
-  bool showPreview = false;
 
   @override
   Widget build(BuildContext context) {
@@ -240,9 +219,8 @@ class _CourseCardState extends State<CourseCard> {
             context,
             MaterialPageRoute(
               builder: (context) => CourseDetailPage(
-                course: widget.course,
-                isFavorite: widget.isFavorite,
-                onToggleFavorite: widget.onToggleFavorite,
+                course: course,
+                isFavorite: isFavorite,
               ),
             ),
           );
@@ -263,7 +241,7 @@ class _CourseCardState extends State<CourseCard> {
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Text(
-                      widget.course['code'],
+                      course['code'],
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
                         color: Colors.lightBlue[800],
@@ -271,43 +249,29 @@ class _CourseCardState extends State<CourseCard> {
                       ),
                     ),
                   ),
-                  Row(
-                    children: [
-                      IconButton(
-                        visualDensity: VisualDensity.compact,
-                        icon: Icon(
-                          showPreview ? Icons.expand_less : Icons.expand_more,
-                          color: Colors.grey[700],
-                        ),
-                        onPressed: () => setState(() => showPreview = !showPreview),
-                      ),
-                      // Mengirim callback ke parent pemilik state
-                      IconButton(
-                        visualDensity: VisualDensity.compact,
-                        icon: Icon(
-                          widget.isFavorite ? Icons.favorite : Icons.favorite_border,
-                          color: widget.isFavorite ? Colors.red : Colors.grey,
-                        ),
-                        onPressed: widget.onToggleFavorite,
-                      ),
-                    ],
+                  IconButton(
+                    visualDensity: VisualDensity.compact,
+                    icon: Icon(
+                      isFavorite ? Icons.favorite : Icons.favorite_border,
+                      color: isFavorite ? Colors.red : Colors.grey,
+                    ),
+                    // TAHAP 3: Mengirim aksi kembali melalui callback onFavoriteChanged
+                    onPressed: onFavoriteChanged,
                   ),
                 ],
               ),
               const SizedBox(height: 8),
               Text(
-                widget.course['title'],
+                course['title'],
                 style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
               ),
-              if (showPreview) ...[
-                const SizedBox(height: 6),
-                Text(
-                  '${widget.course['credits']} SKS • Status: ${widget.course['status']}',
-                  style: const TextStyle(fontSize: 12, color: Colors.black54),
-                ),
-              ],
+              const SizedBox(height: 4),
+              Text(
+                '${course['credits']} SKS • ${course['status']}',
+                style: const TextStyle(fontSize: 12, color: Colors.black54),
+              ),
             ],
           ),
         ),
@@ -317,25 +281,29 @@ class _CourseCardState extends State<CourseCard> {
 }
 
 // =======================================================
-// HALAMAN 1: HOME (CHILD 1 YANG MENERIMA FAVORITES)
+// HALAMAN 1: HOME
 // =======================================================
 class HomePage extends StatelessWidget {
+  final int totalCourses;
   final Set<String> favorites;
-  final ValueChanged<String> onToggleFavorite;
 
   const HomePage({
     super.key,
+    required this.totalCourses,
     required this.favorites,
-    required this.onToggleFavorite,
   });
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Course Explorer - Tahap 2')),
+      appBar: AppBar(title: const Text('Course Explorer - Tahap 3')),
       body: Column(
         children: [
           const StudentHeader(),
+          CourseSummaryBanner(
+            totalCourses: totalCourses,
+            favoriteCount: favorites.length,
+          ),
           Expanded(
             child: Center(
               child: SingleChildScrollView(
@@ -343,36 +311,17 @@ class HomePage extends StatelessWidget {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(Icons.account_tree_outlined, size: 64, color: Colors.lightBlue[400]),
+                    Icon(Icons.sync_alt, size: 64, color: Colors.lightBlue[400]),
                     const SizedBox(height: 12),
                     const Text(
-                      'Tahap 2: Prop Drilling & State Ownership',
+                      'Tahap 3: Lifting State Up &\nSingle Source of Truth',
                       style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                       textAlign: TextAlign.center,
                     ),
-                    const SizedBox(height: 16),
-                    // Menampilkan ringkasan dari state parent
-                    Card(
-                      color: Colors.lightBlue[50],
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-                        child: Column(
-                          children: [
-                            Text(
-                              'Total Favorites: ${favorites.length}',
-                              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                            ),
-                            const SizedBox(height: 8),
-                            Text('Kode Favorit: ${favorites.isEmpty ? "-" : favorites.join(", ")}'),
-                            const SizedBox(height: 12),
-                            ElevatedButton.icon(
-                              onPressed: () => onToggleFavorite('PTI-02'),
-                              icon: const Icon(Icons.favorite),
-                              label: const Text('Toggle Favorite PTI-02 dari Home'),
-                            ),
-                          ],
-                        ),
-                      ),
+                    const SizedBox(height: 12),
+                    Text(
+                      'Daftar Favorit Sinkron: ${favorites.isEmpty ? "Belum ada" : favorites.join(", ")}',
+                      style: const TextStyle(fontSize: 14, color: Colors.black87),
                     ),
                   ],
                 ),
@@ -386,33 +335,75 @@ class HomePage extends StatelessWidget {
 }
 
 // =======================================================
-// HALAMAN 2: COURSES (CHILD 2 YANG MENERIMA & MENERUSKAN FAVORITES)
+// HALAMAN 2: COURSES (DUA WIDGET KONSISTEN: BANNER & LIST)
 // =======================================================
 class CoursesPage extends StatelessWidget {
   final Set<String> favorites;
-  final ValueChanged<String> onToggleFavorite;
+  final ValueChanged<String> onFavoriteChanged;
 
   const CoursesPage({
     super.key,
     required this.favorites,
-    required this.onToggleFavorite,
+    required this.onFavoriteChanged,
   });
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text('Daftar Course (Fav: ${favorites.length})')),
+      appBar: AppBar(title: const Text('Daftar Course (Tahap 3)')),
       body: Column(
         children: [
           const StudentHeader(),
+          // Widget 1: Menampilkan jumlah favorite dari sumber yang sama
+          CourseSummaryBanner(
+            totalCourses: courseData.length,
+            favoriteCount: favorites.length,
+          ),
+          // Widget 2: Menampilkan daftar CourseCard dengan callback ke parent
           Expanded(
             child: Center(
               child: ConstrainedBox(
                 constraints: const BoxConstraints(maxWidth: 1000),
-                // Prop Drilling lanjut ke CourseListSection -> CourseCard
-                child: CourseListSection(
-                  favorites: favorites,
-                  onToggleFavorite: onToggleFavorite,
+                child: LayoutBuilder(
+                  builder: (context, constraints) {
+                    if (constraints.maxWidth < 600) {
+                      return ListView.builder(
+                        padding: const EdgeInsets.all(16),
+                        itemCount: courseData.length,
+                        itemBuilder: (context, index) {
+                          final course = courseData[index];
+                          final code = course['code'] as String;
+                          return Padding(
+                            padding: const EdgeInsets.only(bottom: 12),
+                            child: CourseCard(
+                              course: course,
+                              isFavorite: favorites.contains(code),
+                              onFavoriteChanged: () => onFavoriteChanged(code),
+                            ),
+                          );
+                        },
+                      );
+                    }
+                    return GridView.builder(
+                      padding: const EdgeInsets.all(16),
+                      gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+                        maxCrossAxisExtent: 350,
+                        crossAxisSpacing: 16,
+                        mainAxisSpacing: 16,
+                        childAspectRatio: 1.7,
+                      ),
+                      itemCount: courseData.length,
+                      itemBuilder: (context, index) {
+                        final course = courseData[index];
+                        final code = course['code'] as String;
+                        return CourseCard(
+                          course: course,
+                          isFavorite: favorites.contains(code),
+                          onFavoriteChanged: () => onFavoriteChanged(code),
+                        );
+                      },
+                    );
+                  },
                 ),
               ),
             ),
@@ -591,13 +582,11 @@ class _DebugPageState extends State<DebugPage> {
 class CourseDetailPage extends StatelessWidget {
   final Map<String, dynamic> course;
   final bool isFavorite;
-  final VoidCallback onToggleFavorite;
 
   const CourseDetailPage({
     super.key,
     required this.course,
     required this.isFavorite,
-    required this.onToggleFavorite,
   });
 
   @override
@@ -621,7 +610,7 @@ class CourseDetailPage extends StatelessWidget {
                     isFavorite ? Icons.favorite : Icons.favorite_border,
                     color: isFavorite ? Colors.red : Colors.grey,
                   ),
-                  label: Text(isFavorite ? 'Tersimpan di Favorit' : 'Belum Favorit'),
+                  label: Text(isFavorite ? 'Status: Favorite' : 'Status: Non-Favorite'),
                 ),
               ],
             ),
