@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart'; // TAHAP 6: Import package provider
 
 const String studentName = 'I Made Duta Aryawan';
 const String studentId = '2415051044';
@@ -13,12 +14,11 @@ final List<Map<String, dynamic>> courseData = [
 ];
 
 // =======================================================
-// TAHAP 5: MEMBUAT CHANGENOTIFIER (STATE MANAGEMENT LOGIC)
+// CHANGENOTIFIER (STATE MANAGEMENT LOGIC)
 // =======================================================
 class CourseProvider extends ChangeNotifier {
   final Set<String> _favorites = {};
 
-  // Getter agar favorites tidak bisa dimodifikasi langsung dari luar
   Set<String> get favorites => _favorites;
 
   void toggleFavorite(String id) {
@@ -27,13 +27,21 @@ class CourseProvider extends ChangeNotifier {
     } else {
       _favorites.add(id);
     }
-    // Wajib dipanggil untuk memberitahu widget listener agar rebuild
     notifyListeners();
   }
 }
 
+// =======================================================
+// MAIN & PROVIDER SETUP (TAHAP 6)
+// =======================================================
 void main() {
-  runApp(const CourseExplorerApp());
+  runApp(
+    // TAHAP 6: Membungkus aplikasi dengan ChangeNotifierProvider
+    ChangeNotifierProvider(
+      create: (_) => CourseProvider(),
+      child: const CourseExplorerApp(),
+    ),
+  );
 }
 
 class CourseExplorerApp extends StatelessWidget {
@@ -60,7 +68,7 @@ class CourseExplorerApp extends StatelessWidget {
 
 // =======================================================
 // ARSITEKTUR UTAMA
-// (Di tahap 6 nanti, state ini akan digantikan oleh Provider)
+// (Kita masih menyisakan state lokal sementara sebelum refactor penuh di Tahap 7)
 // =======================================================
 class ResponsiveShell extends StatefulWidget {
   const ResponsiveShell({super.key});
@@ -71,8 +79,7 @@ class ResponsiveShell extends StatefulWidget {
 class _ResponsiveShellState extends State<ResponsiveShell> {
   int _currentIndex = 0;
   
-  // Masih menggunakan state lama sebelum dipasang Provider di Tahap 6
-  final Set<String> _favorites = {'PTI-01', 'PTI-02'};
+  final Set<String> _favorites = {'PTI-01'};
 
   void _handleFavoriteChanged(String code) {
     setState(() {
@@ -87,14 +94,8 @@ class _ResponsiveShellState extends State<ResponsiveShell> {
   @override
   Widget build(BuildContext context) {
     final List<Widget> pages = [
-      HomePage(
-        totalCourses: courseData.length,
-        favorites: _favorites,
-      ),
-      CoursesPage(
-        favorites: _favorites,
-        onFavoriteChanged: _handleFavoriteChanged,
-      ),
+      HomePage(totalCourses: courseData.length, favorites: _favorites),
+      CoursesPage(favorites: _favorites, onFavoriteChanged: _handleFavoriteChanged),
       const ProfilePage(),
       const DebugPage(),
     ];
@@ -215,40 +216,20 @@ class CourseSummaryBanner extends StatelessWidget {
 // =======================================================
 // HALAMAN 1: HOME
 // =======================================================
-class HomePage extends StatefulWidget {
+class HomePage extends StatelessWidget {
   final int totalCourses;
   final Set<String> favorites;
 
-  const HomePage({
-    super.key,
-    required this.totalCourses,
-    required this.favorites,
-  });
-
-  @override
-  State<HomePage> createState() => _HomePageState();
-}
-
-class _HomePageState extends State<HomePage> {
-  final ValueNotifier<int> _interactionCounter = ValueNotifier<int>(0);
-
-  @override
-  void dispose() {
-    _interactionCounter.dispose();
-    super.dispose();
-  }
+  const HomePage({super.key, required this.totalCourses, required this.favorites});
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Course Explorer - Tahap 5')),
+      appBar: AppBar(title: const Text('Course Explorer - Tahap 6')),
       body: Column(
         children: [
           const StudentHeader(),
-          CourseSummaryBanner(
-            totalCourses: widget.totalCourses,
-            favoriteCount: widget.favorites.length,
-          ),
+          CourseSummaryBanner(totalCourses: totalCourses, favoriteCount: favorites.length),
           Expanded(
             child: Center(
               child: SingleChildScrollView(
@@ -256,14 +237,13 @@ class _HomePageState extends State<HomePage> {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(Icons.code, size: 64, color: Colors.lightBlue[400]),
+                    Icon(Icons.account_tree, size: 64, color: Colors.lightBlue[400]),
                     const SizedBox(height: 12),
                     const Text(
-                      'Tahap 5: ChangeNotifier telah dibuat di kode',
+                      'Tahap 6: Provider telah dipasang\npada Root Aplikasi (main)',
                       style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                       textAlign: TextAlign.center,
                     ),
-                    const SizedBox(height: 24),
                   ],
                 ),
               ),
@@ -283,12 +263,7 @@ class CourseCard extends StatelessWidget {
   final bool isFavorite;
   final VoidCallback onFavoriteChanged;
 
-  const CourseCard({
-    super.key,
-    required this.course,
-    required this.isFavorite,
-    required this.onFavoriteChanged,
-  });
+  const CourseCard({super.key, required this.course, required this.isFavorite, required this.onFavoriteChanged});
 
   @override
   Widget build(BuildContext context) {
@@ -298,15 +273,7 @@ class CourseCard extends StatelessWidget {
       child: InkWell(
         borderRadius: BorderRadius.circular(16),
         onTap: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => CourseDetailPage(
-                course: course,
-                isFavorite: isFavorite,
-              ),
-            ),
-          );
+          Navigator.push(context, MaterialPageRoute(builder: (context) => CourseDetailPage(course: course, isFavorite: isFavorite)));
         },
         child: Padding(
           padding: const EdgeInsets.all(16.0),
@@ -348,11 +315,7 @@ class CoursesPage extends StatelessWidget {
   final Set<String> favorites;
   final ValueChanged<String> onFavoriteChanged;
 
-  const CoursesPage({
-    super.key,
-    required this.favorites,
-    required this.onFavoriteChanged,
-  });
+  const CoursesPage({super.key, required this.favorites, required this.onFavoriteChanged});
 
   @override
   Widget build(BuildContext context) {
@@ -570,11 +533,7 @@ class CourseDetailPage extends StatelessWidget {
   final Map<String, dynamic> course;
   final bool isFavorite;
 
-  const CourseDetailPage({
-    super.key,
-    required this.course,
-    required this.isFavorite,
-  });
+  const CourseDetailPage({super.key, required this.course, required this.isFavorite});
 
   @override
   Widget build(BuildContext context) {
@@ -593,10 +552,7 @@ class CourseDetailPage extends StatelessWidget {
                 Text(course['desc'], style: const TextStyle(fontSize: 16)),
                 const SizedBox(height: 24),
                 Chip(
-                  avatar: Icon(
-                    isFavorite ? Icons.favorite : Icons.favorite_border,
-                    color: isFavorite ? Colors.red : Colors.grey,
-                  ),
+                  avatar: Icon(isFavorite ? Icons.favorite : Icons.favorite_border, color: isFavorite ? Colors.red : Colors.grey),
                   label: Text(isFavorite ? 'Status: Favorite' : 'Status: Non-Favorite'),
                 ),
               ],
