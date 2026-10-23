@@ -1,11 +1,41 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart'; // TAHAP 6: Import package provider
+import 'package:provider/provider.dart';
 
 const String studentName = 'I Made Duta Aryawan';
 const String studentId = '2415051044';
 
-// DATA COURSE
-final List<Map<String, dynamic>> courseData = [
+// =======================================================
+// TAHAP 8: MEMBUAT MODEL COURSE
+// =======================================================
+class Course {
+  final String code;
+  final String title;
+  final int credits;
+  final String status;
+  final String desc; // Dipertahankan untuk fitur deskripsi Tahap 1
+
+  Course({
+    required this.code,
+    required this.title,
+    required this.credits,
+    required this.status,
+    required this.desc,
+  });
+
+  // Factory untuk mem-parsing data JSON (Map) menjadi Object Course
+  factory Course.fromJson(Map<String, dynamic> json) {
+    return Course(
+      code: json['code'] as String,
+      title: json['title'] as String,
+      credits: json['credits'] as int,
+      status: json['status'] as String,
+      desc: json['desc'] as String? ?? 'Tidak ada deskripsi', // Default value jika desc null
+    );
+  }
+}
+
+// DATA JSON MENTAH (Simulasi data yang belum di-parsing)
+final List<Map<String, dynamic>> rawCourseData = [
   {'code': 'PTI-01', 'title': 'Berpikir Komputasional', 'credits': 3, 'status': 'Active', 'desc': 'Modul ajar CT untuk SMK Fase E.'},
   {'code': 'PTI-02', 'title': 'Mobile UI Flutter', 'credits': 3, 'status': 'Active', 'desc': 'Pengembangan antarmuka responsif.'},
   {'code': 'PTI-03', 'title': 'Jaringan Komputer', 'credits': 2, 'status': 'Planned', 'desc': 'Analisis topologi dan pemetaan IP.'},
@@ -13,8 +43,12 @@ final List<Map<String, dynamic>> courseData = [
   {'code': 'PTI-05', 'title': 'Desain Instruksional', 'credits': 3, 'status': 'Active', 'desc': 'Penerapan Kurikulum Merdeka.'},
 ];
 
+// TAHAP 8: Mengubah List<Map> menjadi List<Course> menggunakan fromJson
+final List<Course> coursesList = rawCourseData.map((e) => Course.fromJson(e)).toList();
+
+
 // =======================================================
-// TAHAP 5: CHANGENOTIFIER (STATE MANAGEMENT LOGIC)
+// TAHAP 5-7: CHANGENOTIFIER (STATE MANAGEMENT LOGIC)
 // =======================================================
 class CourseProvider extends ChangeNotifier {
   final Set<String> _favorites = {};
@@ -27,7 +61,6 @@ class CourseProvider extends ChangeNotifier {
     } else {
       _favorites.add(id);
     }
-    // TAHAP 5: Wajib dipanggil agar UI yang listen ikut rebuild
     notifyListeners();
   }
 }
@@ -37,7 +70,6 @@ class CourseProvider extends ChangeNotifier {
 // =======================================================
 void main() {
   runApp(
-    // TAHAP 6: Membungkus aplikasi dengan ChangeNotifierProvider
     ChangeNotifierProvider(
       create: (_) => CourseProvider(),
       child: const CourseExplorerApp(),
@@ -77,12 +109,10 @@ class ResponsiveShell extends StatefulWidget {
 }
 
 class _ResponsiveShellState extends State<ResponsiveShell> {
-  // TAHAP 1: _currentIndex adalah contoh Local State di level shell
-  int _currentIndex = 0;
-  
+  int _currentIndex = 0; // Tahap 1: Local state
+
   @override
   Widget build(BuildContext context) {
-    // TAHAP 7: Constructor bersih dari Prop Drilling!
     final List<Widget> pages = const [
       HomePage(),
       CoursesPage(),
@@ -158,16 +188,15 @@ class StudentHeader extends StatelessWidget {
 }
 
 // =======================================================
-// WIDGET RINGKASAN (TAHAP 7: CONTEXT.WATCH)
+// WIDGET RINGKASAN
 // =======================================================
 class CourseSummaryBanner extends StatelessWidget {
   const CourseSummaryBanner({super.key});
 
   @override
   Widget build(BuildContext context) {
-    // TAHAP 7: Menggunakan watch() untuk merender ulang UI secara otomatis
     final favoriteCount = context.watch<CourseProvider>().favorites.length;
-    final totalCourses = courseData.length;
+    final totalCourses = coursesList.length; // Menggunakan data model baru
 
     return Container(
       margin: const EdgeInsets.fromLTRB(16, 12, 16, 0),
@@ -211,7 +240,6 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
-  // TAHAP 4 DIPERTAHANKAN: ValueNotifier
   final ValueNotifier<int> _interactionCounter = ValueNotifier<int>(0);
 
   @override
@@ -223,11 +251,11 @@ class _HomePageState extends State<HomePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Course Explorer - Terintegrasi')),
+      appBar: AppBar(title: const Text('Course Explorer - Tahap 8')),
       body: Column(
         children: [
           const StudentHeader(),
-          const CourseSummaryBanner(), // Membaca watch()
+          const CourseSummaryBanner(),
           Expanded(
             child: Center(
               child: SingleChildScrollView(
@@ -235,11 +263,18 @@ class _HomePageState extends State<HomePage> {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(Icons.integration_instructions, size: 64, color: Colors.lightBlue[400]),
+                    Icon(Icons.data_object, size: 64, color: Colors.lightBlue[400]),
                     const SizedBox(height: 12),
+                    const Text(
+                      'Tahap 8: Model Course & fromJson',
+                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 8),
+                    const Text('Data kini menggunakan Object Type-Safe!'),
+                    const SizedBox(height: 24),
                     
-                    
-                    // TAHAP 4 DIPERTAHANKAN: Kotak Demo ValueNotifier
+                    // Kotak Demo ValueNotifier (Tahap 4)
                     Card(
                       elevation: 2,
                       color: Colors.yellow[50],
@@ -247,7 +282,8 @@ class _HomePageState extends State<HomePage> {
                         padding: const EdgeInsets.all(16.0),
                         child: Column(
                           children: [
-                            
+                            const Text('Demo Tahap 4: ValueNotifier', style: TextStyle(fontWeight: FontWeight.bold)),
+                            const SizedBox(height: 12),
                             ValueListenableBuilder<int>(
                               valueListenable: _interactionCounter,
                               builder: (context, value, child) {
@@ -281,10 +317,11 @@ class _HomePageState extends State<HomePage> {
 }
 
 // =======================================================
-// REUSABLE WIDGET 2: COURSE CARD (GABUNGAN TAHAP 1 & TAHAP 7)
+// REUSABLE WIDGET 2: COURSE CARD 
+// TAHAP 8: Sekarang menerima tipe data `Course` bukan Map!
 // =======================================================
 class CourseCard extends StatefulWidget {
-  final Map<String, dynamic> course;
+  final Course course; // <-- Perubahan Tahap 8
 
   const CourseCard({super.key, required this.course});
 
@@ -293,8 +330,7 @@ class CourseCard extends StatefulWidget {
 }
 
 class _CourseCardState extends State<CourseCard> {
-  // TAHAP 1 DIPERTAHANKAN: Local state untuk buka/tutup deskripsi
-  bool showPreview = false; 
+  bool showPreview = false; // Tahap 1 dipertahankan
 
   @override
   Widget build(BuildContext context) {
@@ -318,11 +354,12 @@ class _CourseCardState extends State<CourseCard> {
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                     decoration: BoxDecoration(color: Colors.lightBlue[50], borderRadius: BorderRadius.circular(8)),
-                    child: Text(widget.course['code'], style: TextStyle(fontWeight: FontWeight.bold, color: Colors.lightBlue[800], fontSize: 12)),
+                    // TAHAP 8: Mengakses data menggunakan properties dari object (course.code)
+                    child: Text(widget.course.code, style: TextStyle(fontWeight: FontWeight.bold, color: Colors.lightBlue[800], fontSize: 12)),
                   ),
                   Row(
                     children: [
-                      // TAHAP 1 DIPERTAHANKAN: Tombol expand/collapse (Local State)
+                      // Tahap 1: Local State Expand/Collapse
                       IconButton(
                         visualDensity: VisualDensity.compact,
                         icon: Icon(
@@ -335,10 +372,10 @@ class _CourseCardState extends State<CourseCard> {
                           });
                         },
                       ),
-                      // TAHAP 7: Consumer untuk membatasi rebuild pada Icon Favorite saja
+                      // Tahap 7: Consumer & read()
                       Consumer<CourseProvider>(
                         builder: (context, provider, child) {
-                          final isFavorite = provider.favorites.contains(widget.course['code']);
+                          final isFavorite = provider.favorites.contains(widget.course.code);
                           return IconButton(
                             visualDensity: VisualDensity.compact,
                             icon: Icon(
@@ -346,8 +383,7 @@ class _CourseCardState extends State<CourseCard> {
                               color: isFavorite ? Colors.red : Colors.grey,
                             ),
                             onPressed: () {
-                              // TAHAP 7: Menggunakan read() untuk action/event
-                              context.read<CourseProvider>().toggleFavorite(widget.course['code']);
+                              context.read<CourseProvider>().toggleFavorite(widget.course.code);
                             },
                           );
                         },
@@ -357,13 +393,14 @@ class _CourseCardState extends State<CourseCard> {
                 ],
               ),
               const SizedBox(height: 8),
-              Text(widget.course['title'], style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold), maxLines: 2, overflow: TextOverflow.ellipsis),
+              // Menggunakan course.title
+              Text(widget.course.title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold), maxLines: 2, overflow: TextOverflow.ellipsis),
               
-              // TAHAP 1 DIPERTAHANKAN: Render kondisional preview teks
               if (showPreview) ...[
                 const SizedBox(height: 6),
+                // Menggunakan course.credits, course.status, course.desc
                 Text(
-                  '${widget.course['credits']} SKS • Status: ${widget.course['status']}\n${widget.course['desc']}',
+                  '${widget.course.credits} SKS • Status: ${widget.course.status}\n${widget.course.desc}',
                   style: const TextStyle(fontSize: 12, color: Colors.black54),
                 ),
               ],
@@ -398,11 +435,12 @@ class CoursesPage extends StatelessWidget {
                     if (constraints.maxWidth < 600) {
                       return ListView.builder(
                         padding: const EdgeInsets.all(16),
-                        itemCount: courseData.length,
+                        // TAHAP 8: Menggunakan coursesList
+                        itemCount: coursesList.length,
                         itemBuilder: (context, index) {
                           return Padding(
                             padding: const EdgeInsets.only(bottom: 12),
-                            child: CourseCard(course: courseData[index]),
+                            child: CourseCard(course: coursesList[index]),
                           );
                         },
                       );
@@ -410,9 +448,9 @@ class CoursesPage extends StatelessWidget {
                     return GridView.builder(
                       padding: const EdgeInsets.all(16),
                       gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(maxCrossAxisExtent: 350, crossAxisSpacing: 16, mainAxisSpacing: 16, childAspectRatio: 1.7),
-                      itemCount: courseData.length,
+                      itemCount: coursesList.length,
                       itemBuilder: (context, index) {
-                        return CourseCard(course: courseData[index]);
+                        return CourseCard(course: coursesList[index]);
                       },
                     );
                   },
@@ -589,20 +627,21 @@ class _DebugPageState extends State<DebugPage> {
 }
 
 // =======================================================
-// HALAMAN DETAIL (TAHAP 7: CONTEXT.WATCH)
+// HALAMAN DETAIL
+// TAHAP 8: Menerima tipe data Course
 // =======================================================
 class CourseDetailPage extends StatelessWidget {
-  final Map<String, dynamic> course;
+  final Course course;
 
   const CourseDetailPage({super.key, required this.course});
 
   @override
   Widget build(BuildContext context) {
-    // TAHAP 7: Menggunakan watch() untuk status favorit
-    final isFavorite = context.watch<CourseProvider>().favorites.contains(course['code']);
+    // TAHAP 8: Akses field class object
+    final isFavorite = context.watch<CourseProvider>().favorites.contains(course.code);
 
     return Scaffold(
-      appBar: AppBar(title: Text(course['code'])),
+      appBar: AppBar(title: Text(course.code)),
       body: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 700),
@@ -611,9 +650,9 @@ class CourseDetailPage extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(course['title'], style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
+                Text(course.title, style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
                 const SizedBox(height: 16),
-                Text(course['desc'], style: const TextStyle(fontSize: 16)),
+                Text(course.desc, style: const TextStyle(fontSize: 16)),
                 const SizedBox(height: 24),
                 Chip(
                   avatar: Icon(isFavorite ? Icons.favorite : Icons.favorite_border, color: isFavorite ? Colors.red : Colors.grey),
