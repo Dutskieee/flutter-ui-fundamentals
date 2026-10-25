@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-// TAHAP 12: Import file-file yang sudah dipisah ke folder masing-masing
+// Import file-file logika dari folder yang dipisah di Tahap 12
 import 'models/course.dart';
 import 'services/course_service.dart';
 import 'repositories/course_repository.dart';
@@ -66,9 +66,11 @@ class _ResponsiveShellState extends State<ResponsiveShell> {
 
   @override
   Widget build(BuildContext context) {
+    // TAHAP 13: Menambahkan FavoritesPage ke dalam daftar halaman
     final List<Widget> pages = const [
       HomePage(),
       CoursesPage(),
+      FavoritesPage(), // <--- HALAMAN BARU
       ProfilePage(),
     ];
 
@@ -87,6 +89,7 @@ class _ResponsiveShellState extends State<ResponsiveShell> {
                   destinations: const [
                     NavigationRailDestination(icon: Icon(Icons.home_outlined), selectedIcon: Icon(Icons.home), label: Text('Home')),
                     NavigationRailDestination(icon: Icon(Icons.library_books_outlined), selectedIcon: Icon(Icons.library_books), label: Text('Courses')),
+                    NavigationRailDestination(icon: Icon(Icons.favorite_outline), selectedIcon: Icon(Icons.favorite), label: Text('Favorites')),
                     NavigationRailDestination(icon: Icon(Icons.person_outline), selectedIcon: Icon(Icons.person), label: Text('Profile')),
                   ],
                 ),
@@ -106,6 +109,7 @@ class _ResponsiveShellState extends State<ResponsiveShell> {
             destinations: const [
               NavigationDestination(icon: Icon(Icons.home_outlined), selectedIcon: Icon(Icons.home), label: 'Home'),
               NavigationDestination(icon: Icon(Icons.library_books_outlined), selectedIcon: Icon(Icons.library_books), label: 'Courses'),
+              NavigationDestination(icon: Icon(Icons.favorite_outline), selectedIcon: Icon(Icons.favorite), label: 'Favorites'),
               NavigationDestination(icon: Icon(Icons.person_outline), selectedIcon: Icon(Icons.person), label: 'Profile'),
             ],
           ),
@@ -191,7 +195,7 @@ class _HomePageState extends State<HomePage> {
     final provider = context.watch<CourseProvider>();
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Course Explorer - Tahap 12')),
+      appBar: AppBar(title: const Text('Course Explorer - Tahap 13')),
       body: Column(
         children: [
           const StudentHeader(),
@@ -207,10 +211,10 @@ class _HomePageState extends State<HomePage> {
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Icon(Icons.folder_copy, size: 64, color: Colors.lightBlue[400]),
+                          Icon(Icons.share, size: 64, color: Colors.lightBlue[400]),
                           const SizedBox(height: 12),
                           const Text(
-                            'Tahap 12: Refactor Struktur Folder\n(Separation of Concerns)',
+                            'Tahap 13: Shared Favorites\nLintas Screen',
                             style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                             textAlign: TextAlign.center,
                           ),
@@ -363,6 +367,57 @@ class CoursesPage extends StatelessWidget {
                         ),
                       ),
             ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// =======================================================
+// TAHAP 13: HALAMAN BARU (FAVORITES PAGE)
+// Hanya menampilkan mata kuliah yang di-love
+// =======================================================
+class FavoritesPage extends StatelessWidget {
+  const FavoritesPage({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final provider = context.watch<CourseProvider>();
+    
+    // TAHAP 13: Memfilter daftar course yang ada di dalam set favorites
+    final favoriteCourses = provider.courses.where((course) => provider.favorites.contains(course.code)).toList();
+
+    return Scaffold(
+      appBar: AppBar(title: const Text('Mata Kuliah Favorit')),
+      body: Column(
+        children: [
+          const StudentHeader(),
+          Expanded(
+            child: favoriteCourses.isEmpty
+                ? Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.heart_broken, size: 64, color: Colors.grey[400]),
+                        const SizedBox(height: 16),
+                        const Text('Belum ada course favorit.', style: TextStyle(fontSize: 16, color: Colors.grey)),
+                      ],
+                    ),
+                  )
+                : ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 1000),
+                    child: ListView.builder(
+                      padding: const EdgeInsets.all(16),
+                      itemCount: favoriteCourses.length,
+                      itemBuilder: (context, index) {
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 12),
+                          child: CourseCard(course: favoriteCourses[index]),
+                        );
+                      },
+                    ),
+                  ),
           ),
         ],
       ),
