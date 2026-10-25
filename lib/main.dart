@@ -7,7 +7,7 @@ const String studentName = 'I Made Duta Aryawan';
 const String studentId = '2415051044';
 
 // =======================================================
-// TAHAP 8: MODEL COURSE
+// MODEL COURSE
 // =======================================================
 class Course {
   final String code;
@@ -36,10 +36,13 @@ class Course {
 }
 
 // =======================================================
-// TAHAP 9: COURSE SERVICE (DATA SOURCE)
+// COURSE SERVICE (DATA SOURCE)
 // =======================================================
 class CourseService {
   Future<List<Course>> loadCourses() async {
+    // TAHAP 11: Simulasi delay jaringan (agar loading spinner terlihat)
+    await Future.delayed(const Duration(seconds: 1));
+    
     final jsonString = await rootBundle.loadString('assets/data/student_data.json');
     final data = jsonDecode(jsonString) as Map<String, dynamic>;
     final list = data['courses'] as List<dynamic>;
@@ -48,8 +51,7 @@ class CourseService {
 }
 
 // =======================================================
-// TAHAP 10: COURSE REPOSITORY
-// Abstraksi yang menjembatani Provider dan Service
+// COURSE REPOSITORY
 // =======================================================
 class CourseRepository {
   final CourseService service;
@@ -57,33 +59,45 @@ class CourseRepository {
   CourseRepository(this.service);
 
   Future<List<Course>> getCourses() {
-    // Provider hanya memanggil ini, tidak peduli isinya pakai rootBundle atau API internet
     return service.loadCourses();
   }
 }
 
-// DATA JSON MENTAH SEMENTARA (Akan diganti full dengan Async Provider di Tahap 11)
-final List<Map<String, dynamic>> rawCourseData = [
-  {'code': 'PTI-01', 'title': 'Berpikir Komputasional', 'credits': 3, 'status': 'Active', 'desc': 'Modul ajar CT untuk SMK Fase E.'},
-  {'code': 'PTI-02', 'title': 'Mobile UI Flutter', 'credits': 3, 'status': 'Active', 'desc': 'Pengembangan antarmuka responsif.'},
-  {'code': 'PTI-03', 'title': 'Jaringan Komputer', 'credits': 2, 'status': 'Planned', 'desc': 'Analisis topologi dan pemetaan IP.'},
-  {'code': 'PTI-04', 'title': 'Metodologi Penelitian', 'credits': 2, 'status': 'Completed', 'desc': 'Penyusunan proposal riset EdTech.'},
-  {'code': 'PTI-05', 'title': 'Desain Instruksional', 'credits': 3, 'status': 'Active', 'desc': 'Penerapan Kurikulum Merdeka.'},
-];
-final List<Course> coursesList = rawCourseData.map((e) => Course.fromJson(e)).toList();
-
 // =======================================================
-// TAHAP 5-10: CHANGENOTIFIER DENGAN REPOSITORY
+// TAHAP 11: COURSE PROVIDER DENGAN ASYNC STATE
 // =======================================================
 class CourseProvider extends ChangeNotifier {
-  // Tahap 10: Provider sekarang menerima repository via constructor
   final CourseRepository repository;
   
   CourseProvider(this.repository);
 
+  // State untuk Favorites
   final Set<String> _favorites = {};
-
   Set<String> get favorites => _favorites;
+
+  // TAHAP 11: State untuk Data Loading, Error, & Success
+  List<Course> courses = [];
+  bool isLoading = false;
+  String? error;
+  bool _isInitialized = false; // Mencegah load berkali-kali
+
+  Future<void> loadCourses() async {
+    if (_isInitialized) return; 
+    
+    isLoading = true;
+    error = null;
+    notifyListeners();
+
+    try {
+      courses = await repository.getCourses();
+      _isInitialized = true;
+    } catch (e) {
+      error = "Gagal memuat data: ${e.toString()}";
+    } finally {
+      isLoading = false;
+      notifyListeners();
+    }
+  }
 
   void toggleFavorite(String id) {
     if (_favorites.contains(id)) {
@@ -96,10 +110,9 @@ class CourseProvider extends ChangeNotifier {
 }
 
 // =======================================================
-// MAIN & DEPENDENCY INJECTION (TAHAP 10)
+// MAIN & DEPENDENCY INJECTION
 // =======================================================
 void main() {
-  // Tahap 10: Inisialisasi Service dan Repository sebelum dimasukkan ke Provider
   final courseService = CourseService();
   final courseRepository = CourseRepository(courseService);
 
@@ -134,7 +147,7 @@ class CourseExplorerApp extends StatelessWidget {
 }
 
 // =======================================================
-// ARSITEKTUR UTAMA
+// ARSITEKTUR UTAMA (3 TAB SAJA)
 // =======================================================
 class ResponsiveShell extends StatefulWidget {
   const ResponsiveShell({super.key});
@@ -146,12 +159,20 @@ class _ResponsiveShellState extends State<ResponsiveShell> {
   int _currentIndex = 0;
 
   @override
+  void initState() {
+    super.initState();
+    // TAHAP 11: Memicu loadCourses() otomatis saat aplikasi pertama kali dibuka
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<CourseProvider>().loadCourses();
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
     final List<Widget> pages = const [
       HomePage(),
       CoursesPage(),
       ProfilePage(),
-      DebugPage(),
     ];
 
     return LayoutBuilder(
@@ -170,7 +191,6 @@ class _ResponsiveShellState extends State<ResponsiveShell> {
                     NavigationRailDestination(icon: Icon(Icons.home_outlined), selectedIcon: Icon(Icons.home), label: Text('Home')),
                     NavigationRailDestination(icon: Icon(Icons.library_books_outlined), selectedIcon: Icon(Icons.library_books), label: Text('Courses')),
                     NavigationRailDestination(icon: Icon(Icons.person_outline), selectedIcon: Icon(Icons.person), label: Text('Profile')),
-                    NavigationRailDestination(icon: Icon(Icons.bug_report_outlined), selectedIcon: Icon(Icons.bug_report), label: Text('Debug')),
                   ],
                 ),
                 const VerticalDivider(thickness: 1, width: 1),
@@ -190,7 +210,6 @@ class _ResponsiveShellState extends State<ResponsiveShell> {
               NavigationDestination(icon: Icon(Icons.home_outlined), selectedIcon: Icon(Icons.home), label: 'Home'),
               NavigationDestination(icon: Icon(Icons.library_books_outlined), selectedIcon: Icon(Icons.library_books), label: 'Courses'),
               NavigationDestination(icon: Icon(Icons.person_outline), selectedIcon: Icon(Icons.person), label: 'Profile'),
-              NavigationDestination(icon: Icon(Icons.bug_report_outlined), selectedIcon: Icon(Icons.bug_report), label: 'Debug'),
             ],
           ),
         );
@@ -229,8 +248,10 @@ class CourseSummaryBanner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final favoriteCount = context.watch<CourseProvider>().favorites.length;
-    final totalCourses = coursesList.length; 
+    // TAHAP 11: Membaca jumlah total dari provider.courses secara dinamis
+    final provider = context.watch<CourseProvider>();
+    final favoriteCount = provider.favorites.length;
+    final totalCourses = provider.courses.length; 
 
     return Container(
       margin: const EdgeInsets.fromLTRB(16, 12, 16, 0),
@@ -275,7 +296,6 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   final ValueNotifier<int> _interactionCounter = ValueNotifier<int>(0);
-  bool _isTestingRepo = false;
 
   @override
   void dispose() {
@@ -285,101 +305,67 @@ class _HomePageState extends State<HomePage> {
 
   @override
   Widget build(BuildContext context) {
+    // TAHAP 11: Memantau loading state untuk UI Home
+    final provider = context.watch<CourseProvider>();
+
     return Scaffold(
-      appBar: AppBar(title: const Text('Course Explorer - Tahap 10')),
+      appBar: AppBar(title: const Text('Course Explorer - Tahap 11')),
       body: Column(
         children: [
           const StudentHeader(),
           const CourseSummaryBanner(),
           Expanded(
             child: Center(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(Icons.layers, size: 64, color: Colors.lightBlue[400]),
-                    const SizedBox(height: 12),
-                    const Text(
-                      'Tahap 10: Repository Pattern\n(Abstraksi Layer Data)',
-                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                      textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: 24),
-                    
-                    // TAHAP 10: Tombol untuk menguji CourseRepository melalui Provider
-                    ElevatedButton.icon(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.teal[600],
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                      ),
-                      onPressed: _isTestingRepo ? null : () async {
-                        setState(() => _isTestingRepo = true);
-                        try {
-                          // Membaca repository yang sudah diinjeksi ke Provider
-                          final repo = context.read<CourseProvider>().repository;
-                          final data = await repo.getCourses();
-                          
-                          if (mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text('SUKSES! Repository membaca ${data.length} course dengan aman.'),
-                                backgroundColor: Colors.teal,
+              child: provider.isLoading 
+                ? const CircularProgressIndicator() // TAHAP 11: Tampilkan loading
+                : provider.error != null
+                  ? Text(provider.error!, style: const TextStyle(color: Colors.red)) // TAHAP 11: Tampilkan error
+                  : SingleChildScrollView(
+                      padding: const EdgeInsets.all(16),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.cloud_done, size: 64, color: Colors.lightBlue[400]),
+                          const SizedBox(height: 12),
+                          const Text(
+                            'Tahap 11: Async State Provider\n(Loading, Error, Success)',
+                            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                            textAlign: TextAlign.center,
+                          ),
+                          const SizedBox(height: 24),
+                          Card(
+                            elevation: 2,
+                            color: Colors.yellow[50],
+                            child: Padding(
+                              padding: const EdgeInsets.all(16.0),
+                              child: Column(
+                                children: [
+                                  const Text('Demo Tahap 4: ValueNotifier', style: TextStyle(fontWeight: FontWeight.bold)),
+                                  const SizedBox(height: 12),
+                                  ValueListenableBuilder<int>(
+                                    valueListenable: _interactionCounter,
+                                    builder: (context, value, child) {
+                                      return Text(
+                                        'Tombol ditekan: $value kali',
+                                        style: const TextStyle(fontSize: 20, color: Colors.deepOrange),
+                                      );
+                                    },
+                                  ),
+                                  const SizedBox(height: 12),
+                                  ElevatedButton.icon(
+                                    onPressed: () {
+                                      _interactionCounter.value++; 
+                                    },
+                                    icon: const Icon(Icons.add),
+                                    label: const Text('Tambah Interaksi'),
+                                  ),
+                                ],
                               ),
-                            );
-                          }
-                        } catch (e) {
-                          if (mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(content: Text('ERROR: $e'), backgroundColor: Colors.red),
-                            );
-                          }
-                        } finally {
-                          if (mounted) setState(() => _isTestingRepo = false);
-                        }
-                      },
-                      icon: _isTestingRepo 
-                          ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                          : const Icon(Icons.mediation),
-                      label: Text(_isTestingRepo ? 'Loading Repo...' : 'Uji Coba getCourses()'),
-                    ),
-                    const SizedBox(height: 24),
-
-                    // Kotak Demo ValueNotifier
-                    Card(
-                      elevation: 2,
-                      color: Colors.yellow[50],
-                      child: Padding(
-                        padding: const EdgeInsets.all(16.0),
-                        child: Column(
-                          children: [
-                            const Text('Demo Tahap 4: ValueNotifier', style: TextStyle(fontWeight: FontWeight.bold)),
-                            const SizedBox(height: 12),
-                            ValueListenableBuilder<int>(
-                              valueListenable: _interactionCounter,
-                              builder: (context, value, child) {
-                                return Text(
-                                  'Tombol ditekan: $value kali',
-                                  style: const TextStyle(fontSize: 20, color: Colors.deepOrange),
-                                );
-                              },
                             ),
-                            const SizedBox(height: 12),
-                            ElevatedButton.icon(
-                              onPressed: () {
-                                _interactionCounter.value++; 
-                              },
-                              icon: const Icon(Icons.add),
-                              label: const Text('Tambah Interaksi'),
-                            ),
-                          ],
-                        ),
+                          ),
+                        ],
                       ),
                     ),
-                  ],
-                ),
-              ),
             ),
           ),
         ],
@@ -471,6 +457,9 @@ class CoursesPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // TAHAP 11: Memantau loading state untuk UI Courses
+    final provider = context.watch<CourseProvider>();
+
     return Scaffold(
       appBar: AppBar(title: const Text('Daftar Course')),
       body: Column(
@@ -479,30 +468,36 @@ class CoursesPage extends StatelessWidget {
           const CourseSummaryBanner(),
           Expanded(
             child: Center(
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 1000),
-                child: LayoutBuilder(
-                  builder: (context, constraints) {
-                    if (constraints.maxWidth < 600) {
-                      return ListView.builder(
-                        padding: const EdgeInsets.all(16),
-                        itemCount: coursesList.length,
-                        itemBuilder: (context, index) {
-                          return Padding(padding: const EdgeInsets.only(bottom: 12), child: CourseCard(course: coursesList[index]));
-                        },
-                      );
-                    }
-                    return GridView.builder(
-                      padding: const EdgeInsets.all(16),
-                      gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(maxCrossAxisExtent: 350, crossAxisSpacing: 16, mainAxisSpacing: 16, childAspectRatio: 1.7),
-                      itemCount: coursesList.length,
-                      itemBuilder: (context, index) {
-                        return CourseCard(course: coursesList[index]);
-                      },
-                    );
-                  },
-                ),
-              ),
+              child: provider.isLoading
+                ? const CircularProgressIndicator() // TAHAP 11: Spinner
+                : provider.error != null
+                  ? Text(provider.error!, style: const TextStyle(color: Colors.red)) // TAHAP 11: Error msg
+                  : provider.courses.isEmpty
+                    ? const Text('Tidak ada data courses.') // Kasus kosong
+                    : ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 1000),
+                        child: LayoutBuilder(
+                          builder: (context, constraints) {
+                            if (constraints.maxWidth < 600) {
+                              return ListView.builder(
+                                padding: const EdgeInsets.all(16),
+                                itemCount: provider.courses.length,
+                                itemBuilder: (context, index) {
+                                  return Padding(padding: const EdgeInsets.only(bottom: 12), child: CourseCard(course: provider.courses[index]));
+                                },
+                              );
+                            }
+                            return GridView.builder(
+                              padding: const EdgeInsets.all(16),
+                              gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(maxCrossAxisExtent: 350, crossAxisSpacing: 16, mainAxisSpacing: 16, childAspectRatio: 1.7),
+                              itemCount: provider.courses.length,
+                              itemBuilder: (context, index) {
+                                return CourseCard(course: provider.courses[index]);
+                              },
+                            );
+                          },
+                        ),
+                      ),
             ),
           ),
         ],
@@ -560,108 +555,6 @@ class _ProfilePageState extends State<ProfilePage> {
                         ),
                       ],
                     ),
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// =======================================================
-// HALAMAN 4: DEBUG
-// =======================================================
-class DebugPage extends StatefulWidget {
-  const DebugPage({super.key});
-  @override
-  State<DebugPage> createState() => _DebugPageState();
-}
-
-class _DebugPageState extends State<DebugPage> {
-  bool isNavigating = false;
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Debugging')),
-      body: Column(
-        children: [
-          const StudentHeader(),
-          Expanded(
-            child: Center(
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 600),
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      const Text('Kasus A: Text Panjang di Row', style: TextStyle(fontWeight: FontWeight.bold)),
-                      Card(
-                        elevation: 2,
-                        color: Colors.lightBlue[50],
-                        child: Padding(
-                          padding: const EdgeInsets.all(12.0),
-                          child: Row(
-                            children: const [
-                              Icon(Icons.info, color: Colors.lightBlue),
-                              SizedBox(width: 8),
-                              Expanded(child: Text('Teks ini sangat panjang dan akan menyebabkan overflow jika tidak dibungkus menggunakan Expanded.')),
-                            ],
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 20),
-                      const Text('Kasus B: ListView dalam Column', style: TextStyle(fontWeight: FontWeight.bold)),
-                      Card(
-                        elevation: 2,
-                        color: Colors.lightBlue[50],
-                        child: Container(
-                          height: 120,
-                          padding: const EdgeInsets.all(12.0),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Text('Daftar Item:'),
-                              Expanded(
-                                child: ListView.builder(
-                                  itemCount: 3,
-                                  itemBuilder: (context, index) => Text('- Item List ${index + 1}'),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 20),
-                      const Text('Kasus C: Pancingan Keyboard', style: TextStyle(fontWeight: FontWeight.bold)),
-                      const TextField(
-                        decoration: InputDecoration(
-                          labelText: 'Tap di sini (Layar tidak akan error)',
-                          border: OutlineInputBorder(),
-                        ),
-                      ),
-                      const SizedBox(height: 20),
-                      const Text('Kasus D: Cegah Navigasi Ganda', style: TextStyle(fontWeight: FontWeight.bold)),
-                      ElevatedButton(
-                        style: ElevatedButton.styleFrom(backgroundColor: Colors.lightBlue, foregroundColor: Colors.white, padding: const EdgeInsets.symmetric(vertical: 16)),
-                        onPressed: isNavigating ? null : () async {
-                          setState(() => isNavigating = true);
-                          await Navigator.push(
-                            context,
-                            MaterialPageRoute(builder: (context) => Scaffold(
-                              appBar: AppBar(title: const Text('Halaman Dummy')),
-                              body: const Center(child: Text('Berhasil pindah halaman!')),
-                            )),
-                          );
-                          if (mounted) setState(() => isNavigating = false);
-                        },
-                        child: const Text('Buka Halaman (Tap Cepat!)'),
-                      ),
-                    ],
                   ),
                 ),
               ),
