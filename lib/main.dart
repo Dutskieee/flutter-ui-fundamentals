@@ -1,117 +1,15 @@
-import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+
+// TAHAP 12: Import file-file yang sudah dipisah ke folder masing-masing
+import 'models/course.dart';
+import 'services/course_service.dart';
+import 'repositories/course_repository.dart';
+import 'providers/course_provider.dart';
 
 const String studentName = 'I Made Duta Aryawan';
 const String studentId = '2415051044';
 
-// =======================================================
-// MODEL COURSE
-// =======================================================
-class Course {
-  final String code;
-  final String title;
-  final int credits;
-  final String status;
-  final String desc;
-
-  Course({
-    required this.code,
-    required this.title,
-    required this.credits,
-    required this.status,
-    required this.desc,
-  });
-
-  factory Course.fromJson(Map<String, dynamic> json) {
-    return Course(
-      code: json['code'] as String,
-      title: json['title'] as String,
-      credits: json['credits'] as int,
-      status: json['status'] as String,
-      desc: json['desc'] as String? ?? 'Tidak ada deskripsi',
-    );
-  }
-}
-
-// =======================================================
-// COURSE SERVICE (DATA SOURCE)
-// =======================================================
-class CourseService {
-  Future<List<Course>> loadCourses() async {
-    // TAHAP 11: Simulasi delay jaringan (agar loading spinner terlihat)
-    await Future.delayed(const Duration(seconds: 1));
-    
-    final jsonString = await rootBundle.loadString('assets/data/student_data.json');
-    final data = jsonDecode(jsonString) as Map<String, dynamic>;
-    final list = data['courses'] as List<dynamic>;
-    return list.map((e) => Course.fromJson(e as Map<String, dynamic>)).toList();
-  }
-}
-
-// =======================================================
-// COURSE REPOSITORY
-// =======================================================
-class CourseRepository {
-  final CourseService service;
-  
-  CourseRepository(this.service);
-
-  Future<List<Course>> getCourses() {
-    return service.loadCourses();
-  }
-}
-
-// =======================================================
-// TAHAP 11: COURSE PROVIDER DENGAN ASYNC STATE
-// =======================================================
-class CourseProvider extends ChangeNotifier {
-  final CourseRepository repository;
-  
-  CourseProvider(this.repository);
-
-  // State untuk Favorites
-  final Set<String> _favorites = {};
-  Set<String> get favorites => _favorites;
-
-  // TAHAP 11: State untuk Data Loading, Error, & Success
-  List<Course> courses = [];
-  bool isLoading = false;
-  String? error;
-  bool _isInitialized = false; // Mencegah load berkali-kali
-
-  Future<void> loadCourses() async {
-    if (_isInitialized) return; 
-    
-    isLoading = true;
-    error = null;
-    notifyListeners();
-
-    try {
-      courses = await repository.getCourses();
-      _isInitialized = true;
-    } catch (e) {
-      error = "Gagal memuat data: ${e.toString()}";
-    } finally {
-      isLoading = false;
-      notifyListeners();
-    }
-  }
-
-  void toggleFavorite(String id) {
-    if (_favorites.contains(id)) {
-      _favorites.remove(id);
-    } else {
-      _favorites.add(id);
-    }
-    notifyListeners();
-  }
-}
-
-// =======================================================
-// MAIN & DEPENDENCY INJECTION
-// =======================================================
 void main() {
   final courseService = CourseService();
   final courseRepository = CourseRepository(courseService);
@@ -147,7 +45,7 @@ class CourseExplorerApp extends StatelessWidget {
 }
 
 // =======================================================
-// ARSITEKTUR UTAMA (3 TAB SAJA)
+// UI COMPONENTS
 // =======================================================
 class ResponsiveShell extends StatefulWidget {
   const ResponsiveShell({super.key});
@@ -161,7 +59,6 @@ class _ResponsiveShellState extends State<ResponsiveShell> {
   @override
   void initState() {
     super.initState();
-    // TAHAP 11: Memicu loadCourses() otomatis saat aplikasi pertama kali dibuka
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<CourseProvider>().loadCourses();
     });
@@ -218,9 +115,6 @@ class _ResponsiveShellState extends State<ResponsiveShell> {
   }
 }
 
-// =======================================================
-// REUSABLE WIDGET 1: HEADER IDENTITAS PINTAR
-// =======================================================
 class StudentHeader extends StatelessWidget {
   const StudentHeader({super.key});
   @override
@@ -240,19 +134,12 @@ class StudentHeader extends StatelessWidget {
   }
 }
 
-// =======================================================
-// WIDGET RINGKASAN
-// =======================================================
 class CourseSummaryBanner extends StatelessWidget {
   const CourseSummaryBanner({super.key});
 
   @override
   Widget build(BuildContext context) {
-    // TAHAP 11: Membaca jumlah total dari provider.courses secara dinamis
     final provider = context.watch<CourseProvider>();
-    final favoriteCount = provider.favorites.length;
-    final totalCourses = provider.courses.length; 
-
     return Container(
       margin: const EdgeInsets.fromLTRB(16, 12, 16, 0),
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -268,14 +155,14 @@ class CourseSummaryBanner extends StatelessWidget {
             children: [
               Icon(Icons.menu_book, color: Colors.lightBlue[800], size: 20),
               const SizedBox(width: 8),
-              Text('Courses: $totalCourses', style: const TextStyle(fontWeight: FontWeight.bold)),
+              Text('Courses: ${provider.courses.length}', style: const TextStyle(fontWeight: FontWeight.bold)),
             ],
           ),
           Row(
             children: [
               const Icon(Icons.favorite, color: Colors.red, size: 20),
               const SizedBox(width: 8),
-              Text('Favorites: $favoriteCount', style: const TextStyle(fontWeight: FontWeight.bold)),
+              Text('Favorites: ${provider.favorites.length}', style: const TextStyle(fontWeight: FontWeight.bold)),
             ],
           ),
         ],
@@ -284,12 +171,8 @@ class CourseSummaryBanner extends StatelessWidget {
   }
 }
 
-// =======================================================
-// HALAMAN 1: HOME
-// =======================================================
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
-
   @override
   State<HomePage> createState() => _HomePageState();
 }
@@ -305,11 +188,10 @@ class _HomePageState extends State<HomePage> {
 
   @override
   Widget build(BuildContext context) {
-    // TAHAP 11: Memantau loading state untuk UI Home
     final provider = context.watch<CourseProvider>();
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Course Explorer - Tahap 11')),
+      appBar: AppBar(title: const Text('Course Explorer - Tahap 12')),
       body: Column(
         children: [
           const StudentHeader(),
@@ -317,18 +199,18 @@ class _HomePageState extends State<HomePage> {
           Expanded(
             child: Center(
               child: provider.isLoading 
-                ? const CircularProgressIndicator() // TAHAP 11: Tampilkan loading
+                ? const CircularProgressIndicator() 
                 : provider.error != null
-                  ? Text(provider.error!, style: const TextStyle(color: Colors.red)) // TAHAP 11: Tampilkan error
+                  ? Text(provider.error!, style: const TextStyle(color: Colors.red))
                   : SingleChildScrollView(
                       padding: const EdgeInsets.all(16),
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Icon(Icons.cloud_done, size: 64, color: Colors.lightBlue[400]),
+                          Icon(Icons.folder_copy, size: 64, color: Colors.lightBlue[400]),
                           const SizedBox(height: 12),
                           const Text(
-                            'Tahap 11: Async State Provider\n(Loading, Error, Success)',
+                            'Tahap 12: Refactor Struktur Folder\n(Separation of Concerns)',
                             style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                             textAlign: TextAlign.center,
                           ),
@@ -345,17 +227,12 @@ class _HomePageState extends State<HomePage> {
                                   ValueListenableBuilder<int>(
                                     valueListenable: _interactionCounter,
                                     builder: (context, value, child) {
-                                      return Text(
-                                        'Tombol ditekan: $value kali',
-                                        style: const TextStyle(fontSize: 20, color: Colors.deepOrange),
-                                      );
+                                      return Text('Tombol ditekan: $value kali', style: const TextStyle(fontSize: 20, color: Colors.deepOrange));
                                     },
                                   ),
                                   const SizedBox(height: 12),
                                   ElevatedButton.icon(
-                                    onPressed: () {
-                                      _interactionCounter.value++; 
-                                    },
+                                    onPressed: () => _interactionCounter.value++,
                                     icon: const Icon(Icons.add),
                                     label: const Text('Tambah Interaksi'),
                                   ),
@@ -374,12 +251,8 @@ class _HomePageState extends State<HomePage> {
   }
 }
 
-// =======================================================
-// REUSABLE WIDGET 2: COURSE CARD 
-// =======================================================
 class CourseCard extends StatefulWidget {
   final Course course;
-
   const CourseCard({super.key, required this.course});
 
   @override
@@ -436,7 +309,6 @@ class _CourseCardState extends State<CourseCard> {
               ),
               const SizedBox(height: 8),
               Text(widget.course.title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold), maxLines: 2, overflow: TextOverflow.ellipsis),
-              
               if (showPreview) ...[
                 const SizedBox(height: 6),
                 Text('${widget.course.credits} SKS • Status: ${widget.course.status}\n${widget.course.desc}', style: const TextStyle(fontSize: 12, color: Colors.black54)),
@@ -449,15 +321,11 @@ class _CourseCardState extends State<CourseCard> {
   }
 }
 
-// =======================================================
-// HALAMAN 2: COURSES
-// =======================================================
 class CoursesPage extends StatelessWidget {
   const CoursesPage({super.key});
 
   @override
   Widget build(BuildContext context) {
-    // TAHAP 11: Memantau loading state untuk UI Courses
     final provider = context.watch<CourseProvider>();
 
     return Scaffold(
@@ -469,11 +337,11 @@ class CoursesPage extends StatelessWidget {
           Expanded(
             child: Center(
               child: provider.isLoading
-                ? const CircularProgressIndicator() // TAHAP 11: Spinner
+                ? const CircularProgressIndicator() 
                 : provider.error != null
-                  ? Text(provider.error!, style: const TextStyle(color: Colors.red)) // TAHAP 11: Error msg
+                  ? Text(provider.error!, style: const TextStyle(color: Colors.red)) 
                   : provider.courses.isEmpty
-                    ? const Text('Tidak ada data courses.') // Kasus kosong
+                    ? const Text('Tidak ada data courses.') 
                     : ConstrainedBox(
                         constraints: const BoxConstraints(maxWidth: 1000),
                         child: LayoutBuilder(
@@ -482,18 +350,14 @@ class CoursesPage extends StatelessWidget {
                               return ListView.builder(
                                 padding: const EdgeInsets.all(16),
                                 itemCount: provider.courses.length,
-                                itemBuilder: (context, index) {
-                                  return Padding(padding: const EdgeInsets.only(bottom: 12), child: CourseCard(course: provider.courses[index]));
-                                },
+                                itemBuilder: (context, index) => Padding(padding: const EdgeInsets.only(bottom: 12), child: CourseCard(course: provider.courses[index])),
                               );
                             }
                             return GridView.builder(
                               padding: const EdgeInsets.all(16),
                               gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(maxCrossAxisExtent: 350, crossAxisSpacing: 16, mainAxisSpacing: 16, childAspectRatio: 1.7),
                               itemCount: provider.courses.length,
-                              itemBuilder: (context, index) {
-                                return CourseCard(course: provider.courses[index]);
-                              },
+                              itemBuilder: (context, index) => CourseCard(course: provider.courses[index]),
                             );
                           },
                         ),
@@ -506,9 +370,6 @@ class CoursesPage extends StatelessWidget {
   }
 }
 
-// =======================================================
-// HALAMAN 3: PROFILE
-// =======================================================
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
   @override
@@ -566,9 +427,6 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 }
 
-// =======================================================
-// HALAMAN DETAIL
-// =======================================================
 class CourseDetailPage extends StatelessWidget {
   final Course course;
 

@@ -1,12 +1,12 @@
-// import '../models/course.dart';
-// import '../services/course_service.dart';
+import '../models/course.dart';
+import '../services/course_service.dart';
 
-// class CourseRepository {
-//   final CourseService service;
+class CourseRepository {
+  final CourseService service;
   
-//   CourseRepository(this.service);
+  CourseRepository(this.service);
 
-//   Future<List<Course>> getCourses() {
-//     return service.loadCourses();
-//   }
-// }
+  Future<List<Course>> getCourses() {
+    return service.loadCourses();
+  }
+}
