@@ -1,15 +1,113 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
-
-// Import file-file logika dari folder yang dipisah di Tahap 12
-import 'models/course.dart';
-import 'services/course_service.dart';
-import 'repositories/course_repository.dart';
-import 'providers/course_provider.dart';
 
 const String studentName = 'I Made Duta Aryawan';
 const String studentId = '2415051044';
 
+// =======================================================
+// MODEL COURSE
+// =======================================================
+class Course {
+  final String code;
+  final String title;
+  final int credits;
+  final String status;
+  final String desc;
+
+  Course({
+    required this.code,
+    required this.title,
+    required this.credits,
+    required this.status,
+    required this.desc,
+  });
+
+  factory Course.fromJson(Map<String, dynamic> json) {
+    return Course(
+      code: json['code'] as String,
+      title: json['title'] as String,
+      credits: json['credits'] as int,
+      status: json['status'] as String,
+      desc: json['desc'] as String? ?? 'Tidak ada deskripsi',
+    );
+  }
+}
+
+// =======================================================
+// COURSE SERVICE (DATA SOURCE)
+// =======================================================
+class CourseService {
+  Future<List<Course>> loadCourses() async {
+    await Future.delayed(const Duration(seconds: 1)); // Simulasi loading
+    final jsonString = await rootBundle.loadString('assets/data/student_data.json');
+    final data = jsonDecode(jsonString) as Map<String, dynamic>;
+    final list = data['courses'] as List<dynamic>;
+    return list.map((e) => Course.fromJson(e as Map<String, dynamic>)).toList();
+  }
+}
+
+// =======================================================
+// COURSE REPOSITORY
+// =======================================================
+class CourseRepository {
+  final CourseService service;
+  
+  CourseRepository(this.service);
+
+  Future<List<Course>> getCourses() {
+    return service.loadCourses();
+  }
+}
+
+// =======================================================
+// COURSE PROVIDER DENGAN ASYNC STATE
+// =======================================================
+class CourseProvider extends ChangeNotifier {
+  final CourseRepository repository;
+  
+  CourseProvider(this.repository);
+
+  final Set<String> _favorites = {};
+  Set<String> get favorites => _favorites;
+
+  List<Course> courses = [];
+  bool isLoading = false;
+  String? error;
+  bool _isInitialized = false;
+
+  Future<void> loadCourses() async {
+    if (_isInitialized) return; 
+    
+    isLoading = true;
+    error = null;
+    notifyListeners();
+
+    try {
+      courses = await repository.getCourses();
+      _isInitialized = true;
+    } catch (e) {
+      error = "Gagal memuat data: ${e.toString()}";
+    } finally {
+      isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  void toggleFavorite(String id) {
+    if (_favorites.contains(id)) {
+      _favorites.remove(id);
+    } else {
+      _favorites.add(id);
+    }
+    notifyListeners();
+  }
+}
+
+// =======================================================
+// MAIN & DEPENDENCY INJECTION
+// =======================================================
 void main() {
   final courseService = CourseService();
   final courseRepository = CourseRepository(courseService);
@@ -29,14 +127,16 @@ class CourseExplorerApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      title: 'Course Explorer',
+      title: 'Course Explorer v2',
       theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.lightBlue, primary: Colors.lightBlue[700]!),
+        scaffoldBackgroundColor: const Color(0xFFF8F9FA),
+        colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF1976D2)),
         appBarTheme: const AppBarTheme(
-          backgroundColor: Colors.lightBlue,
+          backgroundColor: Color(0xFF1976D2), 
           foregroundColor: Colors.white,
-          centerTitle: true,
+          centerTitle: false,
           elevation: 0,
+          titleTextStyle: TextStyle(fontSize: 20, fontWeight: FontWeight.w700, letterSpacing: 0.5),
         ),
       ),
       home: const ResponsiveShell(),
@@ -45,7 +145,7 @@ class CourseExplorerApp extends StatelessWidget {
 }
 
 // =======================================================
-// UI COMPONENTS
+// ARSITEKTUR UTAMA & CUSTOM BOTTOM NAV
 // =======================================================
 class ResponsiveShell extends StatefulWidget {
   const ResponsiveShell({super.key});
@@ -66,454 +166,306 @@ class _ResponsiveShellState extends State<ResponsiveShell> {
 
   @override
   Widget build(BuildContext context) {
-    // TAHAP 13: Menambahkan FavoritesPage ke dalam daftar halaman
     final List<Widget> pages = const [
       HomePage(),
       CoursesPage(),
-      FavoritesPage(), // <--- HALAMAN BARU
-      ProfilePage(),
+      FavoritesPage(),
     ];
 
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        if (constraints.maxWidth >= 600) {
-          return Scaffold(
-            body: Row(
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Course Explorer v2'),
+      ),
+      body: pages[_currentIndex],
+      bottomNavigationBar: Container(
+        decoration: BoxDecoration(
+          color: const Color(0xFFE3F2FD),
+          boxShadow: [
+            BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, -3)),
+          ],
+        ),
+        child: SafeArea( 
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 14), 
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
-                NavigationRail(
-                  backgroundColor: Colors.lightBlue[50],
-                  selectedIndex: _currentIndex,
-                  onDestinationSelected: (index) => setState(() => _currentIndex = index),
-                  labelType: NavigationRailLabelType.all,
-                  selectedIconTheme: IconThemeData(color: Colors.lightBlue[800]),
-                  destinations: const [
-                    NavigationRailDestination(icon: Icon(Icons.home_outlined), selectedIcon: Icon(Icons.home), label: Text('Home')),
-                    NavigationRailDestination(icon: Icon(Icons.library_books_outlined), selectedIcon: Icon(Icons.library_books), label: Text('Courses')),
-                    NavigationRailDestination(icon: Icon(Icons.favorite_outline), selectedIcon: Icon(Icons.favorite), label: Text('Favorites')),
-                    NavigationRailDestination(icon: Icon(Icons.person_outline), selectedIcon: Icon(Icons.person), label: Text('Profile')),
-                  ],
-                ),
-                const VerticalDivider(thickness: 1, width: 1),
-                Expanded(child: pages[_currentIndex]),
+                _buildNavItem('Home', 0),
+                _buildNavItem('Courses', 1),
+                _buildNavItem('Favorites', 2),
               ],
             ),
-          );
-        }
-
-        return Scaffold(
-          body: pages[_currentIndex],
-          bottomNavigationBar: NavigationBar(
-            backgroundColor: Colors.lightBlue[50],
-            selectedIndex: _currentIndex,
-            onDestinationSelected: (index) => setState(() => _currentIndex = index),
-            destinations: const [
-              NavigationDestination(icon: Icon(Icons.home_outlined), selectedIcon: Icon(Icons.home), label: 'Home'),
-              NavigationDestination(icon: Icon(Icons.library_books_outlined), selectedIcon: Icon(Icons.library_books), label: 'Courses'),
-              NavigationDestination(icon: Icon(Icons.favorite_outline), selectedIcon: Icon(Icons.favorite), label: 'Favorites'),
-              NavigationDestination(icon: Icon(Icons.person_outline), selectedIcon: Icon(Icons.person), label: 'Profile'),
-            ],
           ),
-        );
-      },
+        ),
+      ),
+    );
+  }
+
+  Widget _buildNavItem(String title, int index) {
+    final isSelected = _currentIndex == index;
+    return GestureDetector(
+      onTap: () => setState(() => _currentIndex = index),
+      behavior: HitTestBehavior.opaque, 
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+        decoration: BoxDecoration(
+          color: isSelected ? const Color(0xFF1976D2).withOpacity(0.1) : Colors.transparent,
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Text(
+          title,
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
+            color: isSelected ? const Color(0xFF0D47A1) : const Color(0xFF1565C0).withOpacity(0.6),
+          ),
+        ),
+      ),
     );
   }
 }
 
+// =======================================================
+// UI COMPONENTS
+// =======================================================
+
+// 1. Header Identitas dengan Foto Profil (SUDAH DIPERBAIKI)
 class StudentHeader extends StatelessWidget {
   const StudentHeader({super.key});
   @override
   Widget build(BuildContext context) {
-    final isLandscape = MediaQuery.of(context).orientation == Orientation.landscape;
     return Container(
       width: double.infinity,
-      padding: EdgeInsets.symmetric(vertical: isLandscape ? 8 : 16, horizontal: 24),
-      color: Colors.lightBlue[100],
-      child: Column(
+      margin: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 8, offset: const Offset(0, 4))],
+        border: Border.all(color: Colors.blue.shade50),
+      ),
+      child: Row(
         children: [
-          Text(studentName, style: TextStyle(fontSize: isLandscape ? 16 : 18, fontWeight: FontWeight.bold, color: Colors.black87)),
-          Text(studentId, style: TextStyle(fontSize: isLandscape ? 12 : 14, color: Colors.black54)),
+          Container(
+            padding: const EdgeInsets.all(2),
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              border: Border.all(color: const Color(0xFF1976D2), width: 2), 
+            ),
+            child: const CircleAvatar(
+              radius: 28,
+              backgroundImage: AssetImage('assets/images/profile.jpg'), 
+              backgroundColor: Color(0xFFE3F2FD),
+              // child: Icon dihapus agar wajah tidak tertimpa
+            ),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  studentName,
+                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF0D47A1)),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  studentId,
+                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: Colors.grey.shade600),
+                ),
+              ],
+            ),
+          ),
         ],
       ),
     );
   }
 }
 
+// 2. Kotak Summary
 class CourseSummaryBanner extends StatelessWidget {
   const CourseSummaryBanner({super.key});
 
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<CourseProvider>();
-    return Container(
-      margin: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      decoration: BoxDecoration(
-        color: Colors.lightBlue[50],
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.lightBlue.shade200),
-      ),
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceAround,
+        children: [
+          Expanded(
+            child: _buildSummaryBox('Courses', '${provider.courses.length}', Icons.library_books),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: _buildSummaryBox('Favorites', '${provider.favorites.length}', Icons.favorite),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSummaryBox(String title, String count, IconData icon) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 8, offset: const Offset(0, 4))],
+        border: Border.all(color: Colors.blue.shade50),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              Icon(Icons.menu_book, color: Colors.lightBlue[800], size: 20),
-              const SizedBox(width: 8),
-              Text('Courses: ${provider.courses.length}', style: const TextStyle(fontWeight: FontWeight.bold)),
+              Icon(icon, size: 16, color: Colors.blue.shade300),
+              const SizedBox(width: 6),
+              Text(title, style: TextStyle(color: Colors.grey.shade600, fontSize: 13, fontWeight: FontWeight.w600)),
             ],
           ),
-          Row(
-            children: [
-              const Icon(Icons.favorite, color: Colors.red, size: 20),
-              const SizedBox(width: 8),
-              Text('Favorites: ${provider.favorites.length}', style: const TextStyle(fontWeight: FontWeight.bold)),
-            ],
-          ),
+          const SizedBox(height: 8),
+          Text(count, style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w900, color: Color(0xFF0D47A1))),
         ],
       ),
     );
   }
 }
 
-class HomePage extends StatefulWidget {
-  const HomePage({super.key});
-  @override
-  State<HomePage> createState() => _HomePageState();
-}
-
-class _HomePageState extends State<HomePage> {
-  final ValueNotifier<int> _interactionCounter = ValueNotifier<int>(0);
-
-  @override
-  void dispose() {
-    _interactionCounter.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final provider = context.watch<CourseProvider>();
-
-    return Scaffold(
-      appBar: AppBar(title: const Text('Course Explorer - Tahap 13')),
-      body: Column(
-        children: [
-          const StudentHeader(),
-          const CourseSummaryBanner(),
-          Expanded(
-            child: Center(
-              child: provider.isLoading 
-                ? const CircularProgressIndicator() 
-                : provider.error != null
-                  ? Text(provider.error!, style: const TextStyle(color: Colors.red))
-                  : SingleChildScrollView(
-                      padding: const EdgeInsets.all(16),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(Icons.share, size: 64, color: Colors.lightBlue[400]),
-                          const SizedBox(height: 12),
-                          const Text(
-                            'Tahap 13: Shared Favorites\nLintas Screen',
-                            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                            textAlign: TextAlign.center,
-                          ),
-                          const SizedBox(height: 24),
-                          Card(
-                            elevation: 2,
-                            color: Colors.yellow[50],
-                            child: Padding(
-                              padding: const EdgeInsets.all(16.0),
-                              child: Column(
-                                children: [
-                                  const Text('Demo Tahap 4: ValueNotifier', style: TextStyle(fontWeight: FontWeight.bold)),
-                                  const SizedBox(height: 12),
-                                  ValueListenableBuilder<int>(
-                                    valueListenable: _interactionCounter,
-                                    builder: (context, value, child) {
-                                      return Text('Tombol ditekan: $value kali', style: const TextStyle(fontSize: 20, color: Colors.deepOrange));
-                                    },
-                                  ),
-                                  const SizedBox(height: 12),
-                                  ElevatedButton.icon(
-                                    onPressed: () => _interactionCounter.value++,
-                                    icon: const Icon(Icons.add),
-                                    label: const Text('Tambah Interaksi'),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class CourseCard extends StatefulWidget {
+// 3. Card Item Course Minimalis
+class CourseCardMinimal extends StatelessWidget {
   final Course course;
-  const CourseCard({super.key, required this.course});
-
-  @override
-  State<CourseCard> createState() => _CourseCardState();
-}
-
-class _CourseCardState extends State<CourseCard> {
-  bool showPreview = false;
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(16),
-        onTap: () {
-          Navigator.push(context, MaterialPageRoute(builder: (context) => CourseDetailPage(course: widget.course)));
-        },
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                    decoration: BoxDecoration(color: Colors.lightBlue[50], borderRadius: BorderRadius.circular(8)),
-                    child: Text(widget.course.code, style: TextStyle(fontWeight: FontWeight.bold, color: Colors.lightBlue[800], fontSize: 12)),
-                  ),
-                  Row(
-                    children: [
-                      IconButton(
-                        visualDensity: VisualDensity.compact,
-                        icon: Icon(showPreview ? Icons.expand_less : Icons.expand_more, color: Colors.grey[700]),
-                        onPressed: () => setState(() => showPreview = !showPreview),
-                      ),
-                      Consumer<CourseProvider>(
-                        builder: (context, provider, child) {
-                          final isFavorite = provider.favorites.contains(widget.course.code);
-                          return IconButton(
-                            visualDensity: VisualDensity.compact,
-                            icon: Icon(isFavorite ? Icons.favorite : Icons.favorite_border, color: isFavorite ? Colors.red : Colors.grey),
-                            onPressed: () => context.read<CourseProvider>().toggleFavorite(widget.course.code),
-                          );
-                        },
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-              const SizedBox(height: 8),
-              Text(widget.course.title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold), maxLines: 2, overflow: TextOverflow.ellipsis),
-              if (showPreview) ...[
-                const SizedBox(height: 6),
-                Text('${widget.course.credits} SKS • Status: ${widget.course.status}\n${widget.course.desc}', style: const TextStyle(fontSize: 12, color: Colors.black54)),
-              ],
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class CoursesPage extends StatelessWidget {
-  const CoursesPage({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    final provider = context.watch<CourseProvider>();
-
-    return Scaffold(
-      appBar: AppBar(title: const Text('Daftar Course')),
-      body: Column(
-        children: [
-          const StudentHeader(),
-          const CourseSummaryBanner(),
-          Expanded(
-            child: Center(
-              child: provider.isLoading
-                ? const CircularProgressIndicator() 
-                : provider.error != null
-                  ? Text(provider.error!, style: const TextStyle(color: Colors.red)) 
-                  : provider.courses.isEmpty
-                    ? const Text('Tidak ada data courses.') 
-                    : ConstrainedBox(
-                        constraints: const BoxConstraints(maxWidth: 1000),
-                        child: LayoutBuilder(
-                          builder: (context, constraints) {
-                            if (constraints.maxWidth < 600) {
-                              return ListView.builder(
-                                padding: const EdgeInsets.all(16),
-                                itemCount: provider.courses.length,
-                                itemBuilder: (context, index) => Padding(padding: const EdgeInsets.only(bottom: 12), child: CourseCard(course: provider.courses[index])),
-                              );
-                            }
-                            return GridView.builder(
-                              padding: const EdgeInsets.all(16),
-                              gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(maxCrossAxisExtent: 350, crossAxisSpacing: 16, mainAxisSpacing: 16, childAspectRatio: 1.7),
-                              itemCount: provider.courses.length,
-                              itemBuilder: (context, index) => CourseCard(course: provider.courses[index]),
-                            );
-                          },
-                        ),
-                      ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// =======================================================
-// TAHAP 13: HALAMAN BARU (FAVORITES PAGE)
-// Hanya menampilkan mata kuliah yang di-love
-// =======================================================
-class FavoritesPage extends StatelessWidget {
-  const FavoritesPage({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    final provider = context.watch<CourseProvider>();
-    
-    // TAHAP 13: Memfilter daftar course yang ada di dalam set favorites
-    final favoriteCourses = provider.courses.where((course) => provider.favorites.contains(course.code)).toList();
-
-    return Scaffold(
-      appBar: AppBar(title: const Text('Mata Kuliah Favorit')),
-      body: Column(
-        children: [
-          const StudentHeader(),
-          Expanded(
-            child: favoriteCourses.isEmpty
-                ? Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(Icons.heart_broken, size: 64, color: Colors.grey[400]),
-                        const SizedBox(height: 16),
-                        const Text('Belum ada course favorit.', style: TextStyle(fontSize: 16, color: Colors.grey)),
-                      ],
-                    ),
-                  )
-                : ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 1000),
-                    child: ListView.builder(
-                      padding: const EdgeInsets.all(16),
-                      itemCount: favoriteCourses.length,
-                      itemBuilder: (context, index) {
-                        return Padding(
-                          padding: const EdgeInsets.only(bottom: 12),
-                          child: CourseCard(course: favoriteCourses[index]),
-                        );
-                      },
-                    ),
-                  ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class ProfilePage extends StatefulWidget {
-  const ProfilePage({super.key});
-  @override
-  State<ProfilePage> createState() => _ProfilePageState();
-}
-
-class _ProfilePageState extends State<ProfilePage> {
-  final _formKey = GlobalKey<FormState>();
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Profil & Feedback')),
-      body: Column(
-        children: [
-          const StudentHeader(),
-          Expanded(
-            child: Center(
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 600),
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.all(24.0),
-                  child: Form(
-                    key: _formKey,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        const Text('Kirim Umpan Balik', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                        const SizedBox(height: 16),
-                        TextFormField(
-                          decoration: const InputDecoration(labelText: 'Pesan', border: OutlineInputBorder(), prefixIcon: Icon(Icons.feedback)),
-                          maxLines: 3,
-                          validator: (value) => (value == null || value.trim().length < 5) ? 'Minimal 5 karakter' : null,
-                        ),
-                        const SizedBox(height: 24),
-                        ElevatedButton(
-                          style: ElevatedButton.styleFrom(backgroundColor: Colors.lightBlue, foregroundColor: Colors.white, padding: const EdgeInsets.symmetric(vertical: 16)),
-                          onPressed: () {
-                            if (_formKey.currentState!.validate()) {
-                              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Terkirim!'), backgroundColor: Colors.green));
-                            }
-                          },
-                          child: const Text('Kirim', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class CourseDetailPage extends StatelessWidget {
-  final Course course;
-
-  const CourseDetailPage({super.key, required this.course});
+  const CourseCardMinimal({super.key, required this.course});
 
   @override
   Widget build(BuildContext context) {
     final isFavorite = context.watch<CourseProvider>().favorites.contains(course.code);
-
-    return Scaffold(
-      appBar: AppBar(title: Text(course.code)),
-      body: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 700),
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(24.0),
+    
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 6, offset: const Offset(0, 2))],
+        border: Border.all(color: Colors.blue.shade50),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(course.title, style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
-                const SizedBox(height: 16),
-                Text(course.desc, style: const TextStyle(fontSize: 16)),
-                const SizedBox(height: 24),
-                Chip(
-                  avatar: Icon(isFavorite ? Icons.favorite : Icons.favorite_border, color: isFavorite ? Colors.red : Colors.grey),
-                  label: Text(isFavorite ? 'Status: Favorite' : 'Status: Non-Favorite'),
+                Text(
+                  course.title, 
+                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF0D47A1))
+                ),
+                const SizedBox(height: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFE0F2F1), 
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Text(
+                    course.status.toLowerCase(), 
+                    style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF00695C)) 
+                  ),
                 ),
               ],
             ),
           ),
-        ),
+          IconButton(
+            icon: Icon(
+              isFavorite ? Icons.favorite : Icons.favorite_border,
+              color: isFavorite ? Colors.redAccent : Colors.grey.shade400,
+              size: 28,
+            ),
+            onPressed: () => context.read<CourseProvider>().toggleFavorite(course.code),
+          )
+        ],
       ),
+    );
+  }
+}
+
+// =======================================================
+// HALAMAN 1: HOME
+// =======================================================
+class HomePage extends StatelessWidget {
+  const HomePage({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final provider = context.watch<CourseProvider>();
+
+    return Column(
+      children: [
+        const StudentHeader(),
+        const CourseSummaryBanner(),
+        Expanded(
+          child: provider.isLoading 
+            ? const Center(child: CircularProgressIndicator()) 
+            : provider.error != null
+              ? Center(child: Text(provider.error!, style: const TextStyle(color: Colors.red)))
+              : ListView.builder(
+                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 20),
+                  itemCount: provider.courses.length,
+                  itemBuilder: (context, index) {
+                    return CourseCardMinimal(course: provider.courses[index]);
+                  },
+                ),
+        ),
+      ],
+    );
+  }
+}
+
+// =======================================================
+// HALAMAN 2 & 3: COURSES & FAVORITES
+// =======================================================
+class CoursesPage extends StatelessWidget {
+  const CoursesPage({super.key});
+  @override
+  Widget build(BuildContext context) {
+    final provider = context.watch<CourseProvider>();
+    return Scaffold(
+      body: provider.isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : ListView.builder(
+              padding: const EdgeInsets.all(16),
+              itemCount: provider.courses.length,
+              itemBuilder: (context, index) => CourseCardMinimal(course: provider.courses[index]),
+            ),
+    );
+  }
+}
+
+class FavoritesPage extends StatelessWidget {
+  const FavoritesPage({super.key});
+  @override
+  Widget build(BuildContext context) {
+    final provider = context.watch<CourseProvider>();
+    final favoriteCourses = provider.courses.where((c) => provider.favorites.contains(c.code)).toList();
+
+    return Scaffold(
+      body: favoriteCourses.isEmpty
+          ? Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.heart_broken, size: 64, color: Colors.grey.shade300),
+                  const SizedBox(height: 16),
+                  Text('Belum ada course favorit.', style: TextStyle(color: Colors.grey.shade500, fontSize: 16)),
+                ],
+              ),
+            )
+          : ListView.builder(
+              padding: const EdgeInsets.all(16),
+              itemCount: favoriteCourses.length,
+              itemBuilder: (context, index) => CourseCardMinimal(course: favoriteCourses[index]),
+            ),
     );
   }
 }
