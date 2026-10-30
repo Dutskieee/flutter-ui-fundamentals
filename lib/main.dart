@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:supabase_flutter/supabase_flutter.dart'; // TAHAP 10: Import Supabase
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'models/course.dart';
 import 'services/course_data_source.dart'; 
-import 'services/course_api_service.dart';
+// import 'services/course_api_service.dart'; // KITA TIDAK PAKAI INI LAGI!
+import 'services/course_supabase_service.dart'; // IMPORT SERVICE SUPABASE
 import 'repositories/course_repository.dart';
 import 'providers/course_provider.dart';
 import 'widgets/error_view.dart'; 
@@ -12,24 +13,21 @@ import 'screens/course_form_page.dart';
 
 const String studentName = 'I Made Duta Aryawan';
 const String studentId = '2415051044';
-const String apiBaseUrl = 'https://course-api-pearl.vercel.app';
 
 const String supabaseUrl = 'https://bylbspiuzbtgkfsxnqrq.supabase.co';
 const String supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJ5bGJzcGl1emJ0Z2tmc3hucXJxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTMzNjI0MzMsImV4cCI6MjEwODkzODQzM30.7vhcX8pwHtH08QmGs1xcOakFJ8N4UItIb-z7KcKz0j0';
 
 Future<void> main() async {
-  // TAHAP 10: Pastikan widget binding siap sebelum memanggil async native code
   WidgetsFlutterBinding.ensureInitialized();
 
-  // TAHAP 10: Inisialisasi Supabase Client sebelum runApp
   await Supabase.initialize(
     url: supabaseUrl,
     anonKey: supabaseAnonKey,
   );
 
-  // Sumber data masih menggunakan API sementara agar aplikasi tidak error
-  // (Nanti di Tahap 16 baris ini akan diganti menjadi SupabaseService)
-  final CourseDataSource dataSource = CourseApiService(apiBaseUrl);
+
+  // TAHAP 11: SWITCH SUMBER DATA KE SUPABASE
+  final CourseDataSource dataSource = CourseSupabaseService();
   final repository = CourseRepository(dataSource);
 
   runApp(
