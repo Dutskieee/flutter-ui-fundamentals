@@ -1,15 +1,14 @@
 import '../models/course.dart';
-import '../services/course_api_service.dart';
+import '../services/course_data_source.dart'; // IMPORT KONTRAK
 
 class CourseRepository {
-  final CourseApiService service;
+  // TAHAP 9: Menggunakan tipe CourseDataSource (Interface/Kontrak), bukan class konkret API
+  final CourseDataSource dataSource;
   
-  CourseRepository(this.service);
+  CourseRepository(this.dataSource);
 
-  Future<List<Course>> getCourses() => service.getCourses();
-  Future<Course> createCourse(Course course) => service.createCourse(course);
-  Future<void> updateCourse(int id, Course course) => service.updateCourse(id, course);
-  
-  // TAHAP 8: Meneruskan perintah delete ke service
-  Future<void> deleteCourse(int id) => service.deleteCourse(id);
+  Future<List<Course>> getCourses() => dataSource.getCourses();
+  Future<Course> createCourse(Course course) => dataSource.createCourse(course);
+  Future<void> updateCourse(int id, Course course) => dataSource.updateCourse(id, course);
+  Future<void> deleteCourse(int id) => dataSource.deleteCourse(id);
 }

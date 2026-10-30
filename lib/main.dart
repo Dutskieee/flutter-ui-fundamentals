@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import 'models/course.dart';
+import 'services/course_data_source.dart'; // IMPORT KONTRAK
 import 'services/course_api_service.dart';
 import 'repositories/course_repository.dart';
 import 'providers/course_provider.dart';
@@ -13,12 +14,14 @@ const String studentId = '2415051044';
 const String apiBaseUrl = 'https://course-api-pearl.vercel.app';
 
 void main() {
-  final courseApiService = CourseApiService(apiBaseUrl);
-  final courseRepository = CourseRepository(courseApiService);
+  // TAHAP 9: Perakitan Repository Pattern. 
+  // Nanti saat pindah ke Supabase, kita HANYA perlu mengganti baris 'dataSource' ini saja.
+  final CourseDataSource dataSource = CourseApiService(apiBaseUrl);
+  final repository = CourseRepository(dataSource);
 
   runApp(
     ChangeNotifierProvider(
-      create: (_) => CourseProvider(courseRepository),
+      create: (_) => CourseProvider(repository)..loadCourses(), // Langsung memanggil loadCourses
       child: const CourseExplorerApp(),
     ),
   );
@@ -57,13 +60,7 @@ class ResponsiveShell extends StatefulWidget {
 class _ResponsiveShellState extends State<ResponsiveShell> {
   int _currentIndex = 0;
 
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<CourseProvider>().loadCourses();
-    });
-  }
+  // loadCourses sudah dipindah ke main.dart sesuai instruksi Tahap 9
 
   @override
   Widget build(BuildContext context) {
@@ -216,7 +213,6 @@ class CourseCardMinimal extends StatelessWidget {
   final Course course;
   const CourseCardMinimal({super.key, required this.course});
 
-  // TAHAP 8: Fungsi Konfirmasi dan Proses Hapus
   void _confirmDelete(BuildContext context, CourseProvider provider) {
     showDialog(
       context: context,
@@ -290,7 +286,6 @@ class CourseCardMinimal extends StatelessWidget {
               Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  // TAHAP 8: Tombol Delete
                   IconButton(
                     icon: const Icon(Icons.delete_outline, color: Colors.redAccent, size: 28),
                     onPressed: provider.isSaving ? null : () => _confirmDelete(context, provider),
