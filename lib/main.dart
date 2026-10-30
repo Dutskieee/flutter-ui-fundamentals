@@ -216,9 +216,46 @@ class CourseCardMinimal extends StatelessWidget {
   final Course course;
   const CourseCardMinimal({super.key, required this.course});
 
+  // TAHAP 8: Fungsi Konfirmasi dan Proses Hapus
+  void _confirmDelete(BuildContext context, CourseProvider provider) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Hapus Course', style: TextStyle(fontWeight: FontWeight.bold)),
+        content: Text('Anda yakin ingin menghapus course ${course.code} - ${course.title}?'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('BATAL')),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
+            onPressed: () => Navigator.pop(ctx, true), 
+            child: const Text('HAPUS'),
+          ),
+        ],
+      ),
+    ).then((confirmed) async {
+      if (confirmed == true) {
+        try {
+          final success = await provider.removeCourse(course.id!, course.code);
+          if (!context.mounted) return;
+          if (success) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Course berhasil dihapus'), backgroundColor: Colors.green),
+            );
+          }
+        } catch (e) {
+          if (!context.mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Gagal menghapus: $e'), backgroundColor: Colors.red),
+          );
+        }
+      }
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
-    final isFavorite = context.watch<CourseProvider>().favorites.contains(course.code);
+    final provider = context.watch<CourseProvider>();
+    final isFavorite = provider.favorites.contains(course.code);
     
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -250,19 +287,23 @@ class CourseCardMinimal extends StatelessWidget {
                   ],
                 ),
               ),
-              // TAHAP 7: Tambahan Tombol Edit di sebelah tombol Favorite
               Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
+                  // TAHAP 8: Tombol Delete
+                  IconButton(
+                    icon: const Icon(Icons.delete_outline, color: Colors.redAccent, size: 28),
+                    onPressed: provider.isSaving ? null : () => _confirmDelete(context, provider),
+                  ),
                   IconButton(
                     icon: const Icon(Icons.edit_note, color: Colors.blueAccent, size: 28),
-                    onPressed: () {
+                    onPressed: provider.isSaving ? null : () {
                       Navigator.push(context, MaterialPageRoute(builder: (_) => CourseFormPage(course: course)));
                     },
                   ),
                   IconButton(
                     icon: Icon(isFavorite ? Icons.favorite : Icons.favorite_border, color: isFavorite ? Colors.redAccent : Colors.grey.shade400, size: 28),
-                    onPressed: () => context.read<CourseProvider>().toggleFavorite(course.code),
+                    onPressed: () => provider.toggleFavorite(course.code),
                   ),
                 ],
               )
@@ -300,7 +341,6 @@ class HomePage extends StatelessWidget {
             ),
           ),
         ),
-
         const CourseSummaryBanner(),
         Expanded(
           child: provider.isLoading 

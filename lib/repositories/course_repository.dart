@@ -8,7 +8,8 @@ class CourseRepository {
 
   Future<List<Course>> getCourses() => service.getCourses();
   Future<Course> createCourse(Course course) => service.createCourse(course);
-  
-  // TAHAP 7: Meneruskan perintah update ke service
   Future<void> updateCourse(int id, Course course) => service.updateCourse(id, course);
+  
+  // TAHAP 8: Meneruskan perintah delete ke service
+  Future<void> deleteCourse(int id) => service.deleteCourse(id);
 }

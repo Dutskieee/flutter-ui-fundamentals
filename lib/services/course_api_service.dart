@@ -35,7 +35,6 @@ class CourseApiService {
     throw Exception(errMsg);
   }
 
-  // TAHAP 7: Fungsi PUT untuk update/edit resource
   Future<void> updateCourse(int id, Course course) async {
     final response = await http.put(
       Uri.parse('$baseUrl/courses/$id'),
@@ -50,6 +49,16 @@ class CourseApiService {
         if (errBody['error'] != null) errMsg = errBody['error'];
       } catch (_) {}
       throw Exception(errMsg);
+    }
+  }
+
+  // TAHAP 8: Fungsi DELETE resource
+  Future<void> deleteCourse(int id) async {
+    final response = await http.delete(
+      Uri.parse('$baseUrl/courses/$id'),
+    );
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw Exception('Gagal menghapus course (HTTP ${response.statusCode})');
     }
   }
 }

@@ -36,7 +36,6 @@ class CourseProvider extends ChangeNotifier {
   Future<bool> addCourse(Course course) async {
     isSaving = true;
     notifyListeners(); 
-    
     try {
       await repository.createCourse(course);
       _isInitialized = false; 
@@ -50,13 +49,34 @@ class CourseProvider extends ChangeNotifier {
     }
   }
 
-  // TAHAP 7: Fungsi update course ke state
   Future<bool> editCourse(int id, Course course) async {
     isSaving = true;
     notifyListeners();
-    
     try {
       await repository.updateCourse(id, course);
+      _isInitialized = false; 
+      await loadCourses();    
+      return true;
+    } catch (e) {
+      throw Exception(e.toString()); 
+    } finally {
+      isSaving = false;
+      notifyListeners(); 
+    }
+  }
+
+  // TAHAP 8: Fungsi hapus course
+  Future<bool> removeCourse(int id, String courseCode) async {
+    isSaving = true;
+    notifyListeners();
+    try {
+      await repository.deleteCourse(id);
+      
+      // TAHAP 8: Hapus dari favorit agar tidak yatim
+      if (_favorites.contains(courseCode)) {
+        _favorites.remove(courseCode);
+      }
+      
       _isInitialized = false; 
       await loadCourses();    
       return true;
