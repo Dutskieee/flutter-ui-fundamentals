@@ -6,7 +6,7 @@ import 'services/course_api_service.dart';
 import 'repositories/course_repository.dart';
 import 'providers/course_provider.dart';
 import 'widgets/error_view.dart'; 
-import 'screens/course_form_page.dart'; // IMPORT FORM BARU TAHAP 6
+import 'screens/course_form_page.dart'; 
 
 const String studentName = 'I Made Duta Aryawan';
 const String studentId = '2415051044';
@@ -250,9 +250,21 @@ class CourseCardMinimal extends StatelessWidget {
                   ],
                 ),
               ),
-              IconButton(
-                icon: Icon(isFavorite ? Icons.favorite : Icons.favorite_border, color: isFavorite ? Colors.redAccent : Colors.grey.shade400, size: 28),
-                onPressed: () => context.read<CourseProvider>().toggleFavorite(course.code),
+              // TAHAP 7: Tambahan Tombol Edit di sebelah tombol Favorite
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.edit_note, color: Colors.blueAccent, size: 28),
+                    onPressed: () {
+                      Navigator.push(context, MaterialPageRoute(builder: (_) => CourseFormPage(course: course)));
+                    },
+                  ),
+                  IconButton(
+                    icon: Icon(isFavorite ? Icons.favorite : Icons.favorite_border, color: isFavorite ? Colors.redAccent : Colors.grey.shade400, size: 28),
+                    onPressed: () => context.read<CourseProvider>().toggleFavorite(course.code),
+                  ),
+                ],
               )
             ],
           ),
@@ -271,8 +283,6 @@ class HomePage extends StatelessWidget {
     return Column(
       children: [
         const StudentHeader(),
-        
-        // TAHAP 6: Tombol Navigasi ke Form Create Course
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 4.0),
           child: ElevatedButton.icon(

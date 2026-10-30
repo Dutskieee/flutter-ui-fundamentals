@@ -7,7 +7,8 @@ class CourseRepository {
   CourseRepository(this.service);
 
   Future<List<Course>> getCourses() => service.getCourses();
-
-  // TAHAP 6: Meneruskan data ke service
   Future<Course> createCourse(Course course) => service.createCourse(course);
+  
+  // TAHAP 7: Meneruskan perintah update ke service
+  Future<void> updateCourse(int id, Course course) => service.updateCourse(id, course);
 }

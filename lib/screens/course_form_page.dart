@@ -4,7 +4,9 @@ import '../models/course.dart';
 import '../providers/course_provider.dart';
 
 class CourseFormPage extends StatefulWidget {
-  const CourseFormPage({super.key});
+  final Course? course; // TAHAP 7: Jika null = Tambah, Jika ada isinya = Edit
+
+  const CourseFormPage({super.key, this.course});
 
   @override
   State<CourseFormPage> createState() => _CourseFormPageState();
@@ -15,7 +17,21 @@ class _CourseFormPageState extends State<CourseFormPage> {
   final _codeCtrl = TextEditingController();
   final _titleCtrl = TextEditingController();
   final _creditsCtrl = TextEditingController();
-  String _status = 'planned'; // Default dropdown
+  String _status = 'planned'; 
+
+  bool get isEditMode => widget.course != null;
+
+  @override
+  void initState() {
+    super.initState();
+    // TAHAP 7: Pre-fill data jika dalam mode edit
+    if (isEditMode) {
+      _codeCtrl.text = widget.course!.code;
+      _titleCtrl.text = widget.course!.title;
+      _creditsCtrl.text = widget.course!.credits.toString();
+      _status = widget.course!.status;
+    }
+  }
 
   @override
   void dispose() {
@@ -28,7 +44,7 @@ class _CourseFormPageState extends State<CourseFormPage> {
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
     
-    final course = Course(
+    final courseInput = Course(
       code: _codeCtrl.text.trim(),
       title: _titleCtrl.text.trim(),
       credits: int.parse(_creditsCtrl.text.trim()),
@@ -37,15 +53,24 @@ class _CourseFormPageState extends State<CourseFormPage> {
 
     final provider = context.read<CourseProvider>();
     try {
-      final success = await provider.addCourse(course);
+      bool success;
+      // TAHAP 7: Pilih fungsi yang tepat berdasarkan mode
+      if (isEditMode) {
+        success = await provider.editCourse(widget.course!.id!, courseInput);
+      } else {
+        success = await provider.addCourse(courseInput);
+      }
       
-      if (!context.mounted) return; // TAHAP 6: Pengecekan wajib setelah await
+      if (!context.mounted) return; 
       
       if (success) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Berhasil menambahkan Course!'), backgroundColor: Colors.green),
+          SnackBar(
+            content: Text(isEditMode ? 'Berhasil mengupdate Course!' : 'Berhasil menambahkan Course!'), 
+            backgroundColor: Colors.green
+          ),
         );
-        Navigator.pop(context); // Tutup halaman form
+        Navigator.pop(context); 
       }
     } catch (e) {
       if (!context.mounted) return;
@@ -60,7 +85,7 @@ class _CourseFormPageState extends State<CourseFormPage> {
     final isSaving = context.watch<CourseProvider>().isSaving;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Tambah Course')),
+      appBar: AppBar(title: Text(isEditMode ? 'Edit Course' : 'Tambah Course')),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Form(
@@ -70,7 +95,8 @@ class _CourseFormPageState extends State<CourseFormPage> {
               TextFormField(
                 controller: _codeCtrl,
                 decoration: const InputDecoration(labelText: 'Kode Course', border: OutlineInputBorder()),
-                enabled: !isSaving,
+                // TAHAP 7: Kode Course read-only saat edit agar kunci favorite tidak rusak
+                enabled: !isSaving && !isEditMode, 
                 validator: (val) => val == null || val.isEmpty ? 'Kode wajib diisi' : null,
               ),
               const SizedBox(height: 16),

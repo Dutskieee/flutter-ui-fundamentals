@@ -15,7 +15,6 @@ class CourseApiService {
     return data.map((e) => Course.fromJson(e as Map<String, dynamic>)).toList();
   }
 
-  // TAHAP 6: Fungsi POST untuk membuat resource baru
   Future<Course> createCourse(Course course) async {
     final response = await http.post(
       Uri.parse('$baseUrl/courses'),
@@ -27,7 +26,6 @@ class CourseApiService {
       return Course.fromJson(jsonDecode(response.body) as Map<String, dynamic>);
     }
     
-    // Menangkap pesan error dari backend (misal error 400 atau 409 duplikat)
     String errMsg = 'Gagal membuat course (HTTP ${response.statusCode})';
     try {
       final errBody = jsonDecode(response.body);
@@ -35,5 +33,23 @@ class CourseApiService {
     } catch (_) {}
     
     throw Exception(errMsg);
+  }
+
+  // TAHAP 7: Fungsi PUT untuk update/edit resource
+  Future<void> updateCourse(int id, Course course) async {
+    final response = await http.put(
+      Uri.parse('$baseUrl/courses/$id'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode(course.toJson()),
+    );
+
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      String errMsg = 'Gagal memperbarui course (HTTP ${response.statusCode})';
+      try {
+        final errBody = jsonDecode(response.body);
+        if (errBody['error'] != null) errMsg = errBody['error'];
+      } catch (_) {}
+      throw Exception(errMsg);
+    }
   }
 }

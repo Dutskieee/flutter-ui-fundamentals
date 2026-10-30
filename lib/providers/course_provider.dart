@@ -12,7 +12,7 @@ class CourseProvider extends ChangeNotifier {
 
   List<Course> courses = [];
   bool isLoading = false;
-  bool isSaving = false; // TAHAP 6: Flag agar tombol submit tidak bisa di-spam
+  bool isSaving = false; 
   String? error;
   bool _isInitialized = false;
 
@@ -33,21 +33,38 @@ class CourseProvider extends ChangeNotifier {
     }
   }
 
-  // TAHAP 6: Fungsi tambah course ke state
   Future<bool> addCourse(Course course) async {
     isSaving = true;
-    notifyListeners(); // Tampilkan animasi loading di tombol
+    notifyListeners(); 
     
     try {
       await repository.createCourse(course);
-      _isInitialized = false; // Reset agar list memaksa refresh
-      await loadCourses();    // Refresh data dari API
+      _isInitialized = false; 
+      await loadCourses();    
       return true;
     } catch (e) {
-      throw Exception(e.toString()); // Lempar error untuk ditangkap UI (SnackBar)
+      throw Exception(e.toString()); 
     } finally {
       isSaving = false;
-      notifyListeners(); // Matikan animasi loading
+      notifyListeners(); 
+    }
+  }
+
+  // TAHAP 7: Fungsi update course ke state
+  Future<bool> editCourse(int id, Course course) async {
+    isSaving = true;
+    notifyListeners();
+    
+    try {
+      await repository.updateCourse(id, course);
+      _isInitialized = false; 
+      await loadCourses();    
+      return true;
+    } catch (e) {
+      throw Exception(e.toString()); 
+    } finally {
+      isSaving = false;
+      notifyListeners(); 
     }
   }
 
