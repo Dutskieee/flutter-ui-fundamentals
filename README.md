@@ -24,3 +24,18 @@ Tanggung jawab masing-masing folder (`lib/`):
     3. `title` (String)
     4. `credits` (Number)
     5. `status` (String: planned/active/done)
+
+    ## Tentang Course Data Manager (v2)
+Aplikasi ini adalah sistem manajemen data mata kuliah (CRUD) yang dikembangkan dari Course Explorer v2. Fitur utama mencakup penambahan, pengubahan, penghapusan, dan pembacaan data (State: Loading, Success, Empty, Error) secara real-time.
+
+## Cara Menjalankan Aplikasi
+1. Pastikan Flutter SDK telah terinstal.
+2. Jalankan perintah `flutter pub get` untuk mengunduh dependency.
+3. Jalankan aplikasi menggunakan perintah `flutter run` atau melalui emulator.
+
+## Arsitektur Singkat
+Aplikasi ini dibangun dengan prinsip *Separation of Concerns* menggunakan pola:
+**UI (Screens/Widgets) -> State Management (Provider) -> Repository Pattern -> Service/Data Source**.
+
+## Backend
+Menggunakan **Supabase (PostgreSQL)** sebagai backend service dan database utama.
