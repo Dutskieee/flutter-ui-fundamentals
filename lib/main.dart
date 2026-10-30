@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:supabase_flutter/supabase_flutter.dart'; // TAHAP 10: Import Supabase
 
 import 'models/course.dart';
-import 'services/course_data_source.dart'; // IMPORT KONTRAK
+import 'services/course_data_source.dart'; 
 import 'services/course_api_service.dart';
 import 'repositories/course_repository.dart';
 import 'providers/course_provider.dart';
@@ -13,15 +14,27 @@ const String studentName = 'I Made Duta Aryawan';
 const String studentId = '2415051044';
 const String apiBaseUrl = 'https://course-api-pearl.vercel.app';
 
-void main() {
-  // TAHAP 9: Perakitan Repository Pattern. 
-  // Nanti saat pindah ke Supabase, kita HANYA perlu mengganti baris 'dataSource' ini saja.
+const String supabaseUrl = 'https://bylbspiuzbtgkfsxnqrq.supabase.co';
+const String supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJ5bGJzcGl1emJ0Z2tmc3hucXJxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTMzNjI0MzMsImV4cCI6MjEwODkzODQzM30.7vhcX8pwHtH08QmGs1xcOakFJ8N4UItIb-z7KcKz0j0';
+
+Future<void> main() async {
+  // TAHAP 10: Pastikan widget binding siap sebelum memanggil async native code
+  WidgetsFlutterBinding.ensureInitialized();
+
+  // TAHAP 10: Inisialisasi Supabase Client sebelum runApp
+  await Supabase.initialize(
+    url: supabaseUrl,
+    anonKey: supabaseAnonKey,
+  );
+
+  // Sumber data masih menggunakan API sementara agar aplikasi tidak error
+  // (Nanti di Tahap 16 baris ini akan diganti menjadi SupabaseService)
   final CourseDataSource dataSource = CourseApiService(apiBaseUrl);
   final repository = CourseRepository(dataSource);
 
   runApp(
     ChangeNotifierProvider(
-      create: (_) => CourseProvider(repository)..loadCourses(), // Langsung memanggil loadCourses
+      create: (_) => CourseProvider(repository)..loadCourses(),
       child: const CourseExplorerApp(),
     ),
   );
@@ -59,8 +72,6 @@ class ResponsiveShell extends StatefulWidget {
 
 class _ResponsiveShellState extends State<ResponsiveShell> {
   int _currentIndex = 0;
-
-  // loadCourses sudah dipindah ke main.dart sesuai instruksi Tahap 9
 
   @override
   Widget build(BuildContext context) {
