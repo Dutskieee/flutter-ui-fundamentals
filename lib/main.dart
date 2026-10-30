@@ -5,9 +5,11 @@ import 'models/course.dart';
 import 'services/course_api_service.dart';
 import 'repositories/course_repository.dart';
 import 'providers/course_provider.dart';
+import 'widgets/error_view.dart'; // IMPORT WIDGET BARU TAHAP 5
 
 const String studentName = 'I Made Duta Aryawan';
 const String studentId = '2415051044';
+// Ganti URL ini sementara jika ingin menguji Error State
 const String apiBaseUrl = 'https://course-api-pearl.vercel.app';
 
 void main() {
@@ -271,15 +273,23 @@ class HomePage extends StatelessWidget {
         const StudentHeader(),
         const CourseSummaryBanner(),
         Expanded(
+          // TAHAP 5: Penanganan State (Loading, Error, Empty, Success)
           child: provider.isLoading 
             ? const Center(child: CircularProgressIndicator()) 
             : provider.error != null
-              ? Center(child: Text(provider.error!, style: const TextStyle(color: Colors.red)))
-              : ListView.builder(
-                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 20),
-                  itemCount: provider.courses.length,
-                  itemBuilder: (context, index) => CourseCardMinimal(course: provider.courses[index]),
-                ),
+              ? ErrorView(
+                  message: provider.error!, 
+                  onRetry: provider.loadCourses
+                )
+              : provider.courses.isEmpty
+                ? const Center(
+                    child: Text('Data course belum tersedia', style: TextStyle(fontSize: 16, color: Colors.grey)),
+                  )
+                : ListView.builder(
+                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 20),
+                    itemCount: provider.courses.length,
+                    itemBuilder: (context, index) => CourseCardMinimal(course: provider.courses[index]),
+                  ),
         ),
       ],
     );
@@ -292,13 +302,23 @@ class CoursesPage extends StatelessWidget {
   Widget build(BuildContext context) {
     final provider = context.watch<CourseProvider>();
     return Scaffold(
+      // TAHAP 5: Penanganan State pada halaman Courses
       body: provider.isLoading
           ? const Center(child: CircularProgressIndicator())
-          : ListView.builder(
-              padding: const EdgeInsets.all(16),
-              itemCount: provider.courses.length,
-              itemBuilder: (context, index) => CourseCardMinimal(course: provider.courses[index]),
-            ),
+          : provider.error != null
+            ? ErrorView(
+                message: provider.error!, 
+                onRetry: provider.loadCourses
+              )
+            : provider.courses.isEmpty
+              ? const Center(
+                  child: Text('Data course belum tersedia', style: TextStyle(fontSize: 16, color: Colors.grey)),
+                )
+              : ListView.builder(
+                  padding: const EdgeInsets.all(16),
+                  itemCount: provider.courses.length,
+                  itemBuilder: (context, index) => CourseCardMinimal(course: provider.courses[index]),
+                ),
     );
   }
 }
