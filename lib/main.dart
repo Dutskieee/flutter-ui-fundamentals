@@ -4,8 +4,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'models/course.dart';
 import 'services/course_data_source.dart'; 
-// import 'services/course_api_service.dart'; // KITA TIDAK PAKAI INI LAGI!
-import 'services/course_supabase_service.dart'; // IMPORT SERVICE SUPABASE
+import 'services/course_supabase_service.dart'; 
 import 'repositories/course_repository.dart';
 import 'providers/course_provider.dart';
 import 'widgets/error_view.dart'; 
