@@ -17,8 +17,6 @@ class CourseSupabaseService implements CourseDataSource {
 
   @override
   Future<Course> createCourse(Course course) async {
-    // TAHAP 12: Fungsi INSERT untuk menambah data ke tabel 'courses'
-    // Penambahan .select().single() penting agar Supabase mengembalikan data yang baru di-insert (termasuk ID-nya)
     final data = await _supabase
         .from('courses')
         .insert(course.toJson())
@@ -30,8 +28,12 @@ class CourseSupabaseService implements CourseDataSource {
 
   @override
   Future<void> updateCourse(int id, Course course) async {
-    // Akan dikerjakan di Tahap 13
-    throw UnimplementedError('Belum diimplementasikan');
+    // TAHAP 13: Fungsi UPDATE untuk mengubah data di tabel 'courses'
+    // Wajib menggunakan .eq('id', id) agar tidak mengubah seluruh data di tabel!
+    await _supabase
+        .from('courses')
+        .update(course.toJson())
+        .eq('id', id); 
   }
 
   @override
