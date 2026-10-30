@@ -1,18 +1,18 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:http/http.dart' as http;
 
-// Mengambil logika murni dari folder yang sudah Anda buat di Worksheet 6
 import 'models/course.dart';
 import 'services/course_service.dart';
 import 'repositories/course_repository.dart';
 import 'providers/course_provider.dart';
 
-// IDENTITAS MAHASISWA
 const String studentName = 'I Made Duta Aryawan';
 const String studentId = '2415051044';
+const String apiUrl = 'https://course-api-pearl.vercel.app/courses';
 
 void main() {
-  // Menggunakan Service dan Repository asli Anda
   final courseService = CourseService();
   final courseRepository = CourseRepository(courseService);
 
@@ -48,9 +48,6 @@ class CourseExplorerApp extends StatelessWidget {
   }
 }
 
-// =======================================================
-// ARSITEKTUR UTAMA & CUSTOM BOTTOM NAV
-// =======================================================
 class ResponsiveShell extends StatefulWidget {
   const ResponsiveShell({super.key});
   @override
@@ -70,10 +67,11 @@ class _ResponsiveShellState extends State<ResponsiveShell> {
 
   @override
   Widget build(BuildContext context) {
-    final List<Widget> pages = const [
-      HomePage(),
-      CoursesPage(),
-      FavoritesPage(),
+    // REVISI: Kata 'const' dihilangkan di sini agar tidak memicu error garis merah
+    final List<Widget> pages = [
+      const HomePage(),
+      const CoursesPage(),
+      const FavoritesPage(),
     ];
 
     return Scaffold(
@@ -125,9 +123,6 @@ class _ResponsiveShellState extends State<ResponsiveShell> {
   }
 }
 
-// =======================================================
-// UI COMPONENTS
-// =======================================================
 class StudentHeader extends StatelessWidget {
   const StudentHeader({super.key});
   @override
@@ -236,9 +231,7 @@ class CourseCardMinimal extends StatelessWidget {
       ),
       child: InkWell(
         borderRadius: BorderRadius.circular(12),
-        onTap: () {
-          // Navigasi ke detail (jika file course_detail_page ada, bisa disambungkan lagi nanti)
-        },
+        onTap: () {},
         child: Padding(
           padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
           child: Row(
@@ -270,17 +263,49 @@ class CourseCardMinimal extends StatelessWidget {
   }
 }
 
-// =======================================================
-// HALAMAN 1, 2, 3
-// =======================================================
 class HomePage extends StatelessWidget {
   const HomePage({super.key});
+
+  Future<void> fetchCoursesTest(BuildContext context) async {
+    try {
+      final response = await http.get(Uri.parse(apiUrl));
+      if (!context.mounted) return;
+
+      if (response.statusCode == 200) {
+        final List<dynamic> data = jsonDecode(response.body);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('GET Sukses! Mengambil ${data.length} item dari API.'), backgroundColor: Colors.green),
+        );
+      } else {
+        throw Exception('HTTP ${response.statusCode}');
+      }
+    } catch (e) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<CourseProvider>();
     return Column(
       children: [
         const StudentHeader(),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16.0),
+          child: ElevatedButton.icon(
+            onPressed: () => fetchCoursesTest(context),
+            icon: const Icon(Icons.cloud_download),
+            label: const Text('Test GET API'),
+            style: ElevatedButton.styleFrom(
+              minimumSize: const Size(double.infinity, 48),
+              backgroundColor: const Color(0xFF1976D2),
+              foregroundColor: Colors.white,
+            ),
+          ),
+        ),
         const CourseSummaryBanner(),
         Expanded(
           child: provider.isLoading 
