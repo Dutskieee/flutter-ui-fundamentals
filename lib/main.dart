@@ -5,11 +5,11 @@ import 'models/course.dart';
 import 'services/course_api_service.dart';
 import 'repositories/course_repository.dart';
 import 'providers/course_provider.dart';
-import 'widgets/error_view.dart'; // IMPORT WIDGET BARU TAHAP 5
+import 'widgets/error_view.dart'; 
+import 'screens/course_form_page.dart'; // IMPORT FORM BARU TAHAP 6
 
 const String studentName = 'I Made Duta Aryawan';
 const String studentId = '2415051044';
-// Ganti URL ini sementara jika ingin menguji Error State
 const String apiBaseUrl = 'https://course-api-pearl.vercel.app';
 
 void main() {
@@ -271,9 +271,28 @@ class HomePage extends StatelessWidget {
     return Column(
       children: [
         const StudentHeader(),
+        
+        // TAHAP 6: Tombol Navigasi ke Form Create Course
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 4.0),
+          child: ElevatedButton.icon(
+            onPressed: () {
+              Navigator.push(context, MaterialPageRoute(builder: (_) => const CourseFormPage()));
+            },
+            icon: const Icon(Icons.add_box),
+            label: const Text('Tambah Course Baru'),
+            style: ElevatedButton.styleFrom(
+              minimumSize: const Size(double.infinity, 48),
+              backgroundColor: const Color(0xFFE8F5E9),
+              foregroundColor: const Color(0xFF2E7D32),
+              elevation: 0,
+              side: const BorderSide(color: Color(0xFFA5D6A7)),
+            ),
+          ),
+        ),
+
         const CourseSummaryBanner(),
         Expanded(
-          // TAHAP 5: Penanganan State (Loading, Error, Empty, Success)
           child: provider.isLoading 
             ? const Center(child: CircularProgressIndicator()) 
             : provider.error != null
@@ -302,7 +321,6 @@ class CoursesPage extends StatelessWidget {
   Widget build(BuildContext context) {
     final provider = context.watch<CourseProvider>();
     return Scaffold(
-      // TAHAP 5: Penanganan State pada halaman Courses
       body: provider.isLoading
           ? const Center(child: CircularProgressIndicator())
           : provider.error != null

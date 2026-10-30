@@ -6,7 +6,8 @@ class CourseRepository {
   
   CourseRepository(this.service);
 
-  Future<List<Course>> getCourses() {
-    return service.getCourses();
-  }
+  Future<List<Course>> getCourses() => service.getCourses();
+
+  // TAHAP 6: Meneruskan data ke service
+  Future<Course> createCourse(Course course) => service.createCourse(course);
 }
