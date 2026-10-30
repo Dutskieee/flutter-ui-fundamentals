@@ -1,16 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-// Murni mengambil logika dari folder yang dipisah!
+// Mengambil logika murni dari folder yang sudah Anda buat di Worksheet 6
 import 'models/course.dart';
 import 'services/course_service.dart';
 import 'repositories/course_repository.dart';
 import 'providers/course_provider.dart';
 
+// IDENTITAS MAHASISWA
 const String studentName = 'I Made Duta Aryawan';
 const String studentId = '2415051044';
 
 void main() {
+  // Menggunakan Service dan Repository asli Anda
   final courseService = CourseService();
   final courseRepository = CourseRepository(courseService);
 
@@ -29,7 +31,7 @@ class CourseExplorerApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      title: 'Course Explorer v2',
+      title: 'Course Data Manager',
       theme: ThemeData(
         scaffoldBackgroundColor: const Color(0xFFF8F9FA),
         colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF1976D2)),
@@ -75,7 +77,7 @@ class _ResponsiveShellState extends State<ResponsiveShell> {
     ];
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Course Explorer v2')),
+      appBar: AppBar(title: const Text('Course Data Manager')),
       body: pages[_currentIndex],
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
@@ -235,7 +237,7 @@ class CourseCardMinimal extends StatelessWidget {
       child: InkWell(
         borderRadius: BorderRadius.circular(12),
         onTap: () {
-          Navigator.push(context, MaterialPageRoute(builder: (context) => CourseDetailPage(course: course)));
+          // Navigasi ke detail (jika file course_detail_page ada, bisa disambungkan lagi nanti)
         },
         child: Padding(
           padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
@@ -269,7 +271,7 @@ class CourseCardMinimal extends StatelessWidget {
 }
 
 // =======================================================
-// HALAMAN 1, 2, 3 & DETAIL
+// HALAMAN 1, 2, 3
 // =======================================================
 class HomePage extends StatelessWidget {
   const HomePage({super.key});
@@ -337,40 +339,6 @@ class FavoritesPage extends StatelessWidget {
               itemCount: favoriteCourses.length,
               itemBuilder: (context, index) => CourseCardMinimal(course: favoriteCourses[index]),
             ),
-    );
-  }
-}
-
-class CourseDetailPage extends StatelessWidget {
-  final Course course;
-  const CourseDetailPage({super.key, required this.course});
-
-  @override
-  Widget build(BuildContext context) {
-    final isFavorite = context.watch<CourseProvider>().favorites.contains(course.code);
-    return Scaffold(
-      appBar: AppBar(title: Text(course.code)),
-      body: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 700),
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(24.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(course.title, style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Color(0xFF0D47A1))),
-                const SizedBox(height: 16),
-                Text(course.desc, style: const TextStyle(fontSize: 16)),
-                const SizedBox(height: 24),
-                Chip(
-                  avatar: Icon(isFavorite ? Icons.favorite : Icons.favorite_border, color: isFavorite ? Colors.red : Colors.grey),
-                  label: Text(isFavorite ? 'Status: Favorite' : 'Status: Non-Favorite'),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
     );
   }
 }
