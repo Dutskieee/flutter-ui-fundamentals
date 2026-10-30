@@ -67,7 +67,6 @@ class _ResponsiveShellState extends State<ResponsiveShell> {
 
   @override
   Widget build(BuildContext context) {
-    // REVISI: Kata 'const' dihilangkan di sini agar tidak memicu error garis merah
     final List<Widget> pages = [
       const HomePage(),
       const CoursesPage(),
@@ -273,8 +272,29 @@ class HomePage extends StatelessWidget {
 
       if (response.statusCode == 200) {
         final List<dynamic> data = jsonDecode(response.body);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('GET Sukses! Mengambil ${data.length} item dari API.'), backgroundColor: Colors.green),
+        
+        // TAHAP 3: Konversi response list JSON menjadi List<Course>
+        final List<Course> apiCourses = data.map((e) => Course.fromJson(e)).toList();
+        
+        // TAHAP 3: Tampilkan code, title, dan status minimal tiga course pada UI (Dialog)
+        showDialog(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            title: const Text('Data API (Model Course)', style: TextStyle(fontWeight: FontWeight.bold)),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: apiCourses.take(3).map((c) => 
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 8.0),
+                  child: Text('• ${c.code}: ${c.title} (${c.status})'),
+                )
+              ).toList(),
+            ),
+            actions: [
+              TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('TUTUP'))
+            ],
+          ),
         );
       } else {
         throw Exception('HTTP ${response.statusCode}');
@@ -297,8 +317,8 @@ class HomePage extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 16.0),
           child: ElevatedButton.icon(
             onPressed: () => fetchCoursesTest(context),
-            icon: const Icon(Icons.cloud_download),
-            label: const Text('Test GET API'),
+            icon: const Icon(Icons.transform),
+            label: const Text('Test Parsing JSON ke Model (Tahap 3)'),
             style: ElevatedButton.styleFrom(
               minimumSize: const Size(double.infinity, 48),
               backgroundColor: const Color(0xFF1976D2),
