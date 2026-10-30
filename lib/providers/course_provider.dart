@@ -16,7 +16,7 @@ class CourseProvider extends ChangeNotifier {
   bool _isInitialized = false;
 
   Future<void> loadCourses() async {
-    if (_isInitialized) return;
+    if (_isInitialized) return; 
     
     isLoading = true;
     error = null;
